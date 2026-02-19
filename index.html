@@ -6628,147 +6628,6 @@ function printDocPreview(){
     win.document.write(`<!DOCTYPE html><html><head><title>${_previewDoc.name}</title>
     <style>body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;}img{max-width:100%;}</style>
     </head><body><img src="${_previewDoc.data}" onload="window.print();window.close();">
-<script>
-// ── Service Worker Registration ──────────────────────────────
-if('serviceWorker' in navigator){
-  window.addEventListener('load', function(){
-    var swCode = `const CACHE_NAME = 'nursevault-v1';
-const ASSETS = [
-  './',
-  './index.html',
-  'https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Instrument+Sans:wght@300;400;500;600&display=swap',
-  'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
-];
-
-// Install — cache all core assets
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(ASSETS).catch(() => {});
-    }).then(() => self.skipWaiting())
-  );
-});
-
-// Activate — clean up old caches
-self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
-  );
-});
-
-// Fetch — cache-first for local, network-first for external
-self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return;
-  const url = new URL(e.request.url);
-
-  // Cache-first for same-origin (the app itself)
-  if (url.origin === location.origin) {
-    e.respondWith(
-      caches.match(e.request).then(cached => {
-        if (cached) return cached;
-        return fetch(e.request).then(resp => {
-          if (resp && resp.status === 200) {
-            const clone = resp.clone();
-            caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
-          }
-          return resp;
-        }).catch(() => caches.match('./index.html'));
-      })
-    );
-    return;
-  }
-
-  // Network-first for CDN/fonts — fallback to cache offline
-  e.respondWith(
-    fetch(e.request).then(resp => {
-      if (resp && resp.status === 200) {
-        const clone = resp.clone();
-        caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
-      }
-      return resp;
-    }).catch(() => caches.match(e.request))
-  );
-});
-`;
-    var blob = new Blob([swCode], {type: 'application/javascript'});
-    var swUrl = URL.createObjectURL(blob);
-    navigator.serviceWorker.register(swUrl)
-      .then(reg => console.log('[NurseVault] SW registered (inline):', reg.scope))
-      .catch(err => console.warn('[NurseVault] SW failed:', err));
-  });
-}
-
-// ── PWA Install Prompt ───────────────────────────────────────
-let _deferredInstallPrompt = null;
-window.addEventListener('beforeinstallprompt', function(e){
-  e.preventDefault();
-  _deferredInstallPrompt = e;
-  // Show install banner after 3s if not dismissed
-  setTimeout(showInstallBanner, 3000);
-});
-
-function showInstallBanner(){
-  if(!_deferredInstallPrompt) return;
-  if(document.getElementById('nvInstallBanner')) return;
-  const banner = document.createElement('div');
-  banner.id = 'nvInstallBanner';
-  banner.innerHTML = `
-    <div style="
-      position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
-      background:linear-gradient(135deg,#0d1117,#131920);
-      border:1px solid rgba(56,189,248,0.3);border-radius:14px;
-      padding:14px 20px;display:flex;align-items:center;gap:14px;
-      box-shadow:0 8px 32px rgba(0,0,0,0.5);z-index:99999;
-      font-family:'Syne',sans-serif;min-width:280px;max-width:340px;
-      animation:slideUp .3s ease;">
-      <img src="data:image/png;base64,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" style="width:42px;height:42px;border-radius:10px;">
-      <div style="flex:1;">
-        <div style="font-size:14px;font-weight:700;color:#e2eaf4;">Install NurseVault</div>
-        <div style="font-size:11px;color:#7a92aa;margin-top:2px;">Add to home screen for offline access</div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:6px;">
-        <button onclick="doInstallPWA()" style="
-          background:linear-gradient(135deg,#38bdf8,#818cf8);border:none;
-          border-radius:8px;padding:7px 14px;color:white;font-size:12px;
-          font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;">Install</button>
-        <button onclick="dismissInstallBanner()" style="
-          background:none;border:none;color:#7a92aa;font-size:11px;
-          cursor:pointer;font-family:'DM Mono',monospace;">Not now</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(banner);
-}
-
-function doInstallPWA(){
-  if(!_deferredInstallPrompt) return;
-  _deferredInstallPrompt.prompt();
-  _deferredInstallPrompt.userChoice.then(result => {
-    if(result.outcome === 'accepted') toast('\u2713 NurseVault installed!');
-    _deferredInstallPrompt = null;
-    dismissInstallBanner();
-  });
-}
-
-function dismissInstallBanner(){
-  const b = document.getElementById('nvInstallBanner');
-  if(b) b.remove();
-  _deferredInstallPrompt = null;
-}
-
-window.addEventListener('appinstalled', function(){
-  toast('\u2713 NurseVault added to home screen!');
-  dismissInstallBanner();
-});
-</script>
-<style>
-@keyframes slideUp{from{opacity:0;transform:translateX(-50%) translateY(20px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
-</style>
 </body></html>`);
   } else if(ext==='pdf'){
     win.document.write(`<!DOCTYPE html><html><head><title>${_previewDoc.name}</title>
@@ -7996,7 +7855,7 @@ function resetAllStudentPasswords(){
   let count = 0;
   students.forEach(function(u){
     // Derive surname: use stored surname field, or first word of name
-    let surname = u.surname || (u.name ? u.name.trim().split(/s+/)[0] : '');
+    let surname = u.surname || (u.name ? u.name.trim().split(/\s+/)[0] : '');
     surname = surname.toLowerCase().replace(/[^a-z0-9]/g,'');
     if(!surname) surname = 'student';
     u.password = surname + '123';
@@ -8004,7 +7863,7 @@ function resetAllStudentPasswords(){
   });
   saveDB();
   renderUsers();
-  toast('u2713 Passwords reset for ' + count + ' students (surname + 123)');
+  toast('\u2713 Passwords reset for ' + count + ' students (surname + 123)');
 }
 
 // ============================================================
@@ -8611,5 +8470,147 @@ function nominalExportExcel(){
 
 </script>
 
+
+<script>
+// ── Service Worker Registration ──────────────────────────────
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    var swCode = `const CACHE_NAME = 'nursevault-v1';
+const ASSETS = [
+  './',
+  './index.html',
+  'https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Instrument+Sans:wght@300;400;500;600&display=swap',
+  'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
+];
+
+// Install — cache all core assets
+self.addEventListener('install', e => {
+  e.waitUntil(
+    caches.open(CACHE_NAME).then(cache => {
+      return cache.addAll(ASSETS).catch(() => {});
+    }).then(() => self.skipWaiting())
+  );
+});
+
+// Activate — clean up old caches
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    ).then(() => self.clients.claim())
+  );
+});
+
+// Fetch — cache-first for local, network-first for external
+self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
+  const url = new URL(e.request.url);
+
+  // Cache-first for same-origin (the app itself)
+  if (url.origin === location.origin) {
+    e.respondWith(
+      caches.match(e.request).then(cached => {
+        if (cached) return cached;
+        return fetch(e.request).then(resp => {
+          if (resp && resp.status === 200) {
+            const clone = resp.clone();
+            caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+          }
+          return resp;
+        }).catch(() => caches.match('./index.html'));
+      })
+    );
+    return;
+  }
+
+  // Network-first for CDN/fonts — fallback to cache offline
+  e.respondWith(
+    fetch(e.request).then(resp => {
+      if (resp && resp.status === 200) {
+        const clone = resp.clone();
+        caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+      }
+      return resp;
+    }).catch(() => caches.match(e.request))
+  );
+});
+`;
+    var blob = new Blob([swCode], {type: 'application/javascript'});
+    var swUrl = URL.createObjectURL(blob);
+    navigator.serviceWorker.register(swUrl)
+      .then(reg => console.log('[NurseVault] SW registered (inline):', reg.scope))
+      .catch(err => console.warn('[NurseVault] SW failed:', err));
+  });
+}
+
+// ── PWA Install Prompt ───────────────────────────────────────
+let _deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', function(e){
+  e.preventDefault();
+  _deferredInstallPrompt = e;
+  // Show install banner after 3s if not dismissed
+  setTimeout(showInstallBanner, 3000);
+});
+
+function showInstallBanner(){
+  if(!_deferredInstallPrompt) return;
+  if(document.getElementById('nvInstallBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'nvInstallBanner';
+  banner.innerHTML = `
+    <div style="
+      position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+      background:linear-gradient(135deg,#0d1117,#131920);
+      border:1px solid rgba(56,189,248,0.3);border-radius:14px;
+      padding:14px 20px;display:flex;align-items:center;gap:14px;
+      box-shadow:0 8px 32px rgba(0,0,0,0.5);z-index:99999;
+      font-family:'Syne',sans-serif;min-width:280px;max-width:340px;
+      animation:slideUp .3s ease;">
+      <img src="data:image/png;base64,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" style="width:42px;height:42px;border-radius:10px;">
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:700;color:#e2eaf4;">Install NurseVault</div>
+        <div style="font-size:11px;color:#7a92aa;margin-top:2px;">Add to home screen for offline access</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <button onclick="doInstallPWA()" style="
+          background:linear-gradient(135deg,#38bdf8,#818cf8);border:none;
+          border-radius:8px;padding:7px 14px;color:white;font-size:12px;
+          font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;">Install</button>
+        <button onclick="dismissInstallBanner()" style="
+          background:none;border:none;color:#7a92aa;font-size:11px;
+          cursor:pointer;font-family:'DM Mono',monospace;">Not now</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(banner);
+}
+
+function doInstallPWA(){
+  if(!_deferredInstallPrompt) return;
+  _deferredInstallPrompt.prompt();
+  _deferredInstallPrompt.userChoice.then(result => {
+    if(result.outcome === 'accepted') toast('\u2713 NurseVault installed!');
+    _deferredInstallPrompt = null;
+    dismissInstallBanner();
+  });
+}
+
+function dismissInstallBanner(){
+  const b = document.getElementById('nvInstallBanner');
+  if(b) b.remove();
+  _deferredInstallPrompt = null;
+}
+
+window.addEventListener('appinstalled', function(){
+  toast('\u2713 NurseVault added to home screen!');
+  dismissInstallBanner();
+});
+</script>
+<style>
+@keyframes slideUp{from{opacity:0;transform:translateX(-50%) translateY(20px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
+</style>
 </body>
 </html>
