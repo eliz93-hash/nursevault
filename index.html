@@ -866,6 +866,45 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
   .fu-files-row .fu-file-cell:nth-child(4){display:none;}
   .fu-files-thead .fu-file-cell:nth-child(4){display:none;}
 }
+
+/* ── VOICE CALL STYLES ─────────────────────────────────────── */
+.call-btn{display:none;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;transition:all .2s;margin-left:auto;flex-shrink:0;}
+.call-btn.voice{background:rgba(52,211,153,.15);color:var(--accent3);}
+.call-btn.group{background:rgba(129,140,248,.15);color:var(--accent2);}
+.call-btn:hover{transform:scale(1.1);}
+.call-btn svg{width:17px;height:17px;}
+#callOverlay{position:fixed;inset:0;background:rgba(8,12,16,.97);z-index:5000;display:none;flex-direction:column;align-items:center;justify-content:center;gap:0;}
+#callOverlay.active{display:flex;}
+.call-ov-av{width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:white;margin-bottom:18px;box-shadow:0 0 0 0 rgba(56,189,248,.4);animation:callPulse 2s ease-in-out infinite;}
+@keyframes callPulse{0%,100%{box-shadow:0 0 0 0 rgba(56,189,248,.35);}50%{box-shadow:0 0 0 18px rgba(56,189,248,0);}}
+.call-ov-name{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:#e2eaf4;margin-bottom:8px;}
+.call-ov-status{font-family:'DM Mono',monospace;font-size:13px;color:var(--text3);margin-bottom:10px;}
+.call-ov-timer{font-family:'DM Mono',monospace;font-size:28px;font-weight:700;color:var(--accent3);margin-bottom:32px;min-height:36px;}
+.call-ov-btns{display:flex;gap:24px;align-items:center;justify-content:center;}
+.call-ov-btn{width:60px;height:60px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:22px;transition:all .2s;}
+.call-ov-btn:hover{transform:scale(1.08);}
+.call-ov-btn.end{background:#ef4444;}
+.call-ov-btn.mute{background:var(--bg3);border:1px solid var(--border);}
+.call-ov-btn.mute.active{background:rgba(251,191,36,.2);border-color:#fbbf24;}
+.call-ov-btn.speaker{background:var(--bg3);border:1px solid var(--border);}
+.call-ov-btn.speaker.active{background:rgba(52,211,153,.2);border-color:var(--accent3);}
+.call-ov-participants{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:340px;margin-bottom:20px;}
+.call-ov-part{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.call-ov-part-av{width:46px;height:46px;border-radius:50%;background:var(--bg3);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--text);}
+.call-ov-part-av.speaking{border-color:var(--accent3);box-shadow:0 0 0 3px rgba(52,211,153,.25);}
+.call-ov-part-name{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;max-width:60px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.call-incoming{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#0d1117,#131920);border:1px solid rgba(52,211,153,.4);border-radius:18px;padding:16px 22px;display:none;flex-direction:column;align-items:center;gap:12px;z-index:4999;box-shadow:0 12px 40px rgba(0,0,0,.6);min-width:280px;animation:slideUp .3s ease;}
+.call-incoming.active{display:flex;}
+.call-inc-row{display:flex;align-items:center;gap:14px;width:100%;}
+.call-inc-av{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--accent3),var(--accent));display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:white;animation:callPulse 1.5s ease-in-out infinite;}
+.call-inc-info{flex:1;}
+.call-inc-name{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:#e2eaf4;}
+.call-inc-type{font-family:'DM Mono',monospace;font-size:11px;color:var(--accent3);}
+.call-inc-btns{display:flex;gap:12px;width:100%;justify-content:center;}
+.call-inc-btn{flex:1;padding:10px;border:none;border-radius:12px;cursor:pointer;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;transition:all .2s;}
+.call-inc-btn.accept{background:linear-gradient(135deg,var(--accent3),#059669);color:white;}
+.call-inc-btn.decline{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3);}
+.call-inc-btn:hover{transform:translateY(-1px);}
 </style>
 </head>
 <body>
@@ -1247,6 +1286,12 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
                 <div class="msg-main-sub" id="msgChatSub">—</div>
               </div>
               <span id="msgAnnounceBadge" class="msg-announce-badge" style="display:none">📢 Class Broadcast</span>
+              <button class="call-btn voice" id="callVoiceBtn" onclick="startVoiceCall()" title="Voice call">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.8 19.79 19.79 0 0118 2.18 2 2 0 0120 4.18v3a2 2 0 01-1.44 1.93 16 16 0 00-4.72 3.72 16 16 0 003.72 4.72A2 2 0 0122 16.92z"/></svg>
+              </button>
+              <button class="call-btn group" id="callGroupBtn" onclick="startGroupCall()" title="Group call">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+              </button>
             </div>
             <div class="msg-body" id="msgBody"></div>
             <div class="msg-typing" id="msgTypingIndicator" style="display:none"></div>
@@ -6923,6 +6968,8 @@ function openThread(threadId){
     document.getElementById('msgSidebarPane').classList.add('mobile-hidden');
     document.getElementById('msgBackBtn').style.display='flex';
   }
+  // Update call buttons for current thread
+  setTimeout(updateCallButtons, 50);
 }
 
 function msgGoBack(){
@@ -8475,74 +8522,21 @@ function nominalExportExcel(){
 // ── Service Worker Registration ──────────────────────────────
 if('serviceWorker' in navigator){
   window.addEventListener('load', function(){
-    var swCode = `const CACHE_NAME = 'nursevault-v1';
-const ASSETS = [
-  './',
-  './index.html',
-  'https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Instrument+Sans:wght@300;400;500;600&display=swap',
-  'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
-];
-
-// Install — cache all core assets
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(ASSETS).catch(() => {});
-    }).then(() => self.skipWaiting())
-  );
-});
-
-// Activate — clean up old caches
-self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
-  );
-});
-
-// Fetch — cache-first for local, network-first for external
-self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return;
-  const url = new URL(e.request.url);
-
-  // Cache-first for same-origin (the app itself)
-  if (url.origin === location.origin) {
-    e.respondWith(
-      caches.match(e.request).then(cached => {
-        if (cached) return cached;
-        return fetch(e.request).then(resp => {
-          if (resp && resp.status === 200) {
-            const clone = resp.clone();
-            caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
-          }
-          return resp;
-        }).catch(() => caches.match('./index.html'));
-      })
-    );
-    return;
-  }
-
-  // Network-first for CDN/fonts — fallback to cache offline
-  e.respondWith(
-    fetch(e.request).then(resp => {
-      if (resp && resp.status === 200) {
-        const clone = resp.clone();
-        caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
-      }
-      return resp;
-    }).catch(() => caches.match(e.request))
-  );
-});
-`;
-    var blob = new Blob([swCode], {type: 'application/javascript'});
-    var swUrl = URL.createObjectURL(blob);
-    navigator.serviceWorker.register(swUrl)
-      .then(reg => console.log('[NurseVault] SW registered (inline):', reg.scope))
-      .catch(err => console.warn('[NurseVault] SW failed:', err));
+    // SW encoded as base64 data URI — works for single-file PWA deployments
+    var swCode = [
+      "const CACHE='nv1';",
+      "self.addEventListener('install',e=>{ e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting())); });",
+      "self.addEventListener('activate',e=>{ e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())); });",
+      "self.addEventListener('fetch',e=>{ if(e.request.method!=='GET')return; e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(resp=>{ if(resp&&resp.status===200){const c=resp.clone();caches.open(CACHE).then(ca=>ca.put(e.request,c));}return resp;}).catch(()=>caches.match('./')||new Response('Offline',{status:503})))); });"
+    ].join('\n');
+    var b64 = btoa(unescape(encodeURIComponent(swCode)));
+    var swUrl = 'data:application/javascript;base64,' + b64;
+    navigator.serviceWorker.register(swUrl, {scope: './'})
+      .then(reg => console.log('[NurseVault] SW registered:', reg.scope))
+      .catch(err => {
+        // Data URI SW not supported in this browser — PWA offline caching unavailable
+        console.info('[NurseVault] SW skipped (single-file mode):', err.message);
+      });
   });
 }
 
@@ -8612,5 +8606,459 @@ window.addEventListener('appinstalled', function(){
 <style>
 @keyframes slideUp{from{opacity:0;transform:translateX(-50%) translateY(20px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
 </style>
+
+<!-- CALL OVERLAY -->
+<div id="callOverlay">
+  <div class="call-ov-av" id="callOvAv">?</div>
+  <div class="call-ov-name" id="callOvName">Calling...</div>
+  <div class="call-ov-status" id="callOvStatus">Calling...</div>
+  <div class="call-ov-timer" id="callOvTimer"></div>
+  <div class="call-ov-participants" id="callOvParticipants" style="display:none;"></div>
+  <div class="call-ov-btns">
+    <button class="call-ov-btn mute" id="callMuteBtn" onclick="toggleCallMute()" title="Mute">🎤</button>
+    <button class="call-ov-btn end" onclick="endCall()" title="End call">📵</button>
+    <button class="call-ov-btn speaker" id="callSpeakerBtn" onclick="toggleSpeaker()" title="Speaker">🔊</button>
+  </div>
+</div>
+<!-- INCOMING CALL NOTIFICATION -->
+<div class="call-incoming" id="callIncoming">
+  <div class="call-inc-row">
+    <div class="call-inc-av" id="callIncAv">?</div>
+    <div class="call-inc-info">
+      <div class="call-inc-name" id="callIncName">Unknown</div>
+      <div class="call-inc-type" id="callIncType">📞 Incoming voice call</div>
+    </div>
+  </div>
+  <div class="call-inc-btns">
+    <button class="call-inc-btn accept" onclick="acceptCall()">Accept</button>
+    <button class="call-inc-btn decline" onclick="declineCall()">Decline</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// NURSEVAULT VOICE CALL ENGINE
+// Uses WebRTC (peer-to-peer audio) + localStorage signaling
+// ══════════════════════════════════════════════════════════════
+
+const CALL_SIG_KEY   = 'nv_call_signal';   // localStorage signaling bus
+const CALL_POLL_MS   = 800;                // signaling poll interval
+
+let _callState       = null;   // null | 'outgoing' | 'incoming' | 'active'
+let _callType        = null;   // 'dm' | 'group'
+let _callThreadId    = null;
+let _callPeers       = {};     // peerId -> {pc, stream}
+let _callLocalStream = null;
+let _callTimerInt    = null;
+let _callTimerSec    = 0;
+let _callPollInt     = null;
+let _callMuted       = false;
+let _callSpeaker     = true;
+let _callId          = null;   // unique call session id
+let _callParticipants= [];     // [{id, name}]
+let _callAudioEls    = {};     // peerId -> <audio> element
+
+// ── Signaling helpers (localStorage pub/sub) ───────────────────
+function callSignalWrite(msg){
+  try{
+    const bus = JSON.parse(localStorage.getItem(CALL_SIG_KEY)||'[]');
+    msg._ts = Date.now();
+    bus.push(msg);
+    // Keep only last 60 signals (prevent bloat)
+    localStorage.setItem(CALL_SIG_KEY, JSON.stringify(bus.slice(-60)));
+  }catch(e){}
+}
+
+function callSignalRead(filter){
+  try{
+    const bus = JSON.parse(localStorage.getItem(CALL_SIG_KEY)||'[]');
+    return bus.filter(m=> m._ts > Date.now()-15000 && filter(m));
+  }catch(e){ return []; }
+}
+
+function callSignalClear(callId){
+  try{
+    const bus = JSON.parse(localStorage.getItem(CALL_SIG_KEY)||'[]');
+    localStorage.setItem(CALL_SIG_KEY, JSON.stringify(bus.filter(m=>m.callId!==callId)));
+  }catch(e){}
+}
+
+// ── Update call buttons visibility based on active thread ─────
+function updateCallButtons(){
+  const vBtn = document.getElementById('callVoiceBtn');
+  const gBtn = document.getElementById('callGroupBtn');
+  if(!vBtn||!gBtn||!activeThreadId) return;
+
+  const isDM      = activeThreadId.startsWith('dm:');
+  const isGroup   = activeThreadId.startsWith('classgroup:') || activeThreadId.startsWith('announce:');
+  const isTeacher = currentRole==='teacher'||currentRole==='admin';
+  const isStudent = currentRole==='student';
+
+  // Students: 1-on-1 voice in DMs only
+  vBtn.style.display = (isDM && (isStudent||isTeacher)) ? 'flex' : 'none';
+  // Lecturers/Admin: group call in class channels only
+  gBtn.style.display = (isGroup && isTeacher) ? 'flex' : 'none';
+}
+
+// Hook into openThread
+// call buttons updated inside openThread directly
+
+// ── Start outgoing DM voice call ──────────────────────────────
+function startVoiceCall(){
+  if(_callState){ toast('Already in a call'); return; }
+  if(!activeThreadId||!activeThreadId.startsWith('dm:')){ toast('Open a DM first'); return; }
+
+  const parts = activeThreadId.split(':').slice(1);
+  const peerId = parts.find(id=>id!==myId());
+  if(!peerId){ toast('Cannot find peer'); return; }
+
+  const peer = getAllUsers().find(u=>u.id===peerId);
+  if(!peer){ toast('User not found'); return; }
+
+  _callId = 'call_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+  _callType = 'dm';
+  _callThreadId = activeThreadId;
+  _callParticipants = [{id:peerId, name:peer.name||peer.username}];
+
+  _startCallFlow('outgoing', peer.name||peer.username, '📞 Calling...');
+
+  // Signal: ring the other user
+  callSignalWrite({
+    type: 'ring',
+    callId: _callId,
+    callType: 'dm',
+    from: myId(),
+    fromName: currentUser.name||currentUser.username||'Someone',
+    to: peerId,
+    threadId: activeThreadId
+  });
+
+  // Start WebRTC as caller
+  _initCallMedia().then(stream=>{
+    _callLocalStream = stream;
+    _createPeerConnection(peerId, true);
+  }).catch(err=>{
+    toast('Microphone access denied');
+    _callState=null;
+    document.getElementById('callOverlay').classList.remove('active');
+  });
+
+  // Poll for answer/decline
+  _callPollInt = setInterval(_pollSignals, CALL_POLL_MS);
+  // Timeout after 30s
+  setTimeout(()=>{ if(_callState==='outgoing') { toast('No answer'); endCall(); } }, 30000);
+}
+
+// ── Start group call (teacher/admin in class channel) ─────────
+function startGroupCall(){
+  if(_callState){ toast('Already in a call'); return; }
+  if(!activeThreadId){ toast('Open a class channel first'); return; }
+
+  const classId = activeThreadId.split(':')[1];
+  const classObj = (db.classes||[]).find(c=>c.id===classId);
+  const className = classObj ? classObj.name : 'Class';
+  const students = (db.users||[]).filter(u=>u.role==='student'&&u.classId===classId);
+
+  if(students.length===0){ toast('No students in this class'); return; }
+
+  _callId = 'call_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+  _callType = 'group';
+  _callThreadId = activeThreadId;
+  _callParticipants = students.map(u=>({id:u.id, name:u.name||u.username}));
+
+  _startCallFlow('outgoing', className + ' Group Call', '📞 Calling ' + students.length + ' student' + (students.length!==1?'s':'') + '...');
+  _showGroupParticipants();
+
+  // Ring all students
+  students.forEach(u=>{
+    callSignalWrite({
+      type: 'ring',
+      callId: _callId,
+      callType: 'group',
+      from: myId(),
+      fromName: currentUser.name||currentUser.username||'Lecturer',
+      to: u.id,
+      threadId: activeThreadId,
+      className: className
+    });
+  });
+
+  _initCallMedia().then(stream=>{
+    _callLocalStream = stream;
+    // Create peer connections for each student (caller side)
+    students.forEach(u=> _createPeerConnection(u.id, true));
+  }).catch(()=>{ toast('Microphone access denied'); _resetCallState(); });
+
+  _callPollInt = setInterval(_pollSignals, CALL_POLL_MS);
+}
+
+// ── Accept incoming call ───────────────────────────────────────
+function acceptCall(){
+  const inc = document.getElementById('callIncoming');
+  const callId   = inc.dataset.callId;
+  const from     = inc.dataset.from;
+  const fromName = inc.dataset.fromName;
+  const callType = inc.dataset.callType;
+  const threadId = inc.dataset.threadId;
+  inc.classList.remove('active');
+
+  _callId = callId;
+  _callType = callType;
+  _callThreadId = threadId;
+  _callParticipants = [{id:from, name:fromName}];
+
+  _startCallFlow('active', fromName, '🔗 Connecting...');
+
+  _initCallMedia().then(stream=>{
+    _callLocalStream = stream;
+    // Signal accepted
+    callSignalWrite({ type:'accepted', callId, from:myId(), to:from });
+    // Create peer connection as callee
+    _createPeerConnection(from, false);
+    _callPollInt = setInterval(_pollSignals, CALL_POLL_MS);
+    _startCallTimer();
+    document.getElementById('callOvStatus').textContent = '🟢 Connected';
+  }).catch(()=>{ toast('Microphone access denied'); _resetCallState(); });
+}
+
+// ── Decline incoming call ──────────────────────────────────────
+function declineCall(){
+  const inc = document.getElementById('callIncoming');
+  callSignalWrite({ type:'declined', callId:inc.dataset.callId, from:myId(), to:inc.dataset.from });
+  inc.classList.remove('active');
+}
+
+// ── End call ──────────────────────────────────────────────────
+function endCall(){
+  if(_callId){
+    callSignalWrite({ type:'ended', callId:_callId, from:myId() });
+    callSignalClear(_callId);
+  }
+  _resetCallState();
+  toast('📵 Call ended');
+}
+
+function _resetCallState(){
+  if(_callPollInt){ clearInterval(_callPollInt); _callPollInt=null; }
+  if(_callTimerInt){ clearInterval(_callTimerInt); _callTimerInt=null; }
+  // Close all peer connections
+  Object.values(_callPeers).forEach(pc=>{ try{pc.close();}catch(e){} });
+  _callPeers = {};
+  // Stop local stream
+  if(_callLocalStream){ _callLocalStream.getTracks().forEach(t=>t.stop()); _callLocalStream=null; }
+  // Remove audio elements
+  Object.values(_callAudioEls).forEach(el=>{ try{el.remove();}catch(e){} });
+  _callAudioEls = {};
+  _callState = null; _callType = null; _callThreadId = null;
+  _callId = null; _callTimerSec = 0; _callMuted = false;
+  document.getElementById('callOverlay').classList.remove('active');
+  document.getElementById('callIncoming').classList.remove('active');
+}
+
+// ── WebRTC peer connection ─────────────────────────────────────
+const ICE_SERVERS = { iceServers:[
+  {urls:'stun:stun.l.google.com:19302'},
+  {urls:'stun:stun1.l.google.com:19302'}
+]};
+
+function _createPeerConnection(peerId, isCaller){
+  const pc = new RTCPeerConnection(ICE_SERVERS);
+  _callPeers[peerId] = pc;
+
+  // Add local audio tracks
+  if(_callLocalStream){
+    _callLocalStream.getTracks().forEach(t=> pc.addTrack(t, _callLocalStream));
+  }
+
+  // Handle remote audio
+  pc.ontrack = e=>{
+    if(!_callAudioEls[peerId]){
+      const audio = document.createElement('audio');
+      audio.autoplay = true;
+      audio.setAttribute('playsinline','');
+      document.body.appendChild(audio);
+      _callAudioEls[peerId] = audio;
+    }
+    _callAudioEls[peerId].srcObject = e.streams[0];
+    _updateParticipantSpeaking(peerId, true);
+  };
+
+  // ICE candidates — send via signaling
+  pc.onicecandidate = e=>{
+    if(e.candidate){
+      callSignalWrite({ type:'ice', callId:_callId, from:myId(), to:peerId, candidate: JSON.stringify(e.candidate) });
+    }
+  };
+
+  pc.onconnectionstatechange = ()=>{
+    if(pc.connectionState==='connected'){
+      document.getElementById('callOvStatus').textContent = '🟢 Connected';
+      if(_callState!=='active'){ _callState='active'; _startCallTimer(); }
+    } else if(['failed','disconnected','closed'].includes(pc.connectionState)){
+      if(_callState==='active' && Object.keys(_callPeers).length<=1) endCall();
+    }
+  };
+
+  if(isCaller){
+    pc.createOffer({offerToReceiveAudio:true}).then(offer=>{
+      pc.setLocalDescription(offer);
+      callSignalWrite({ type:'offer', callId:_callId, from:myId(), to:peerId, sdp: JSON.stringify(offer) });
+    });
+  }
+  return pc;
+}
+
+// ── Media initialization ───────────────────────────────────────
+function _initCallMedia(){
+  return navigator.mediaDevices.getUserMedia({ audio:true, video:false });
+}
+
+// ── Signal polling ─────────────────────────────────────────────
+let _processedSigs = new Set();
+
+function _pollSignals(){
+  const myUid = myId();
+  const sigs = callSignalRead(m=> m.to===myUid || (m.type==='ended'&&m.callId===_callId));
+
+  sigs.forEach(sig=>{
+    const key = sig._ts + '_' + sig.type + '_' + (sig.from||'');
+    if(_processedSigs.has(key)) return;
+    _processedSigs.add(key);
+
+    if(sig.type==='ring' && sig.to===myUid && !_callState){
+      _showIncomingCall(sig);
+    }
+
+    if(!_callId || sig.callId!==_callId) return;
+
+    if(sig.type==='accepted' && _callState==='outgoing'){
+      _callState='active';
+      document.getElementById('callOvStatus').textContent = '🔗 Connecting...';
+      _startCallTimer();
+    }
+
+    if(sig.type==='offer' && sig.to===myUid){
+      const pc = _callPeers[sig.from] || _createPeerConnection(sig.from, false);
+      const offer = JSON.parse(sig.sdp);
+      pc.setRemoteDescription(new RTCSessionDescription(offer)).then(()=>{
+        return pc.createAnswer();
+      }).then(answer=>{
+        pc.setLocalDescription(answer);
+        callSignalWrite({ type:'answer', callId:_callId, from:myUid, to:sig.from, sdp:JSON.stringify(answer) });
+      });
+    }
+
+    if(sig.type==='answer' && sig.to===myUid){
+      const pc = _callPeers[sig.from];
+      if(pc){ pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(sig.sdp))); }
+    }
+
+    if(sig.type==='ice' && sig.to===myUid){
+      const pc = _callPeers[sig.from];
+      if(pc){ try{ pc.addIceCandidate(new RTCIceCandidate(JSON.parse(sig.candidate))); }catch(e){} }
+    }
+
+    if(sig.type==='declined' && _callState==='outgoing'){
+      toast('📵 Call declined');
+      _resetCallState();
+    }
+
+    if(sig.type==='ended'){
+      if(_callState){ toast('📵 Call ended'); _resetCallState(); }
+    }
+  });
+
+  // Clean up old processed sigs set
+  if(_processedSigs.size > 200) _processedSigs = new Set([..._processedSigs].slice(-100));
+}
+
+// Also poll for incoming calls even when not in a call
+setInterval(()=>{
+  if(_callState) return;
+  const myUid = myId();
+  if(!myUid) return;
+  const rings = callSignalRead(m=> m.type==='ring' && m.to===myUid && !_callState);
+  rings.forEach(sig=>{
+    const key = sig._ts + '_ring_' + (sig.from||'');
+    if(_processedSigs.has(key)) return;
+    _processedSigs.add(key);
+    _showIncomingCall(sig);
+  });
+}, CALL_POLL_MS);
+
+// ── UI helpers ─────────────────────────────────────────────────
+function _startCallFlow(state, name, status){
+  _callState = state;
+  document.getElementById('callOvName').textContent = name;
+  document.getElementById('callOvStatus').textContent = status;
+  document.getElementById('callOvTimer').textContent = '';
+  document.getElementById('callOvAv').textContent = (name||'?')[0].toUpperCase();
+  document.getElementById('callOverlay').classList.add('active');
+}
+
+function _startCallTimer(){
+  if(_callTimerInt) return;
+  _callTimerSec = 0;
+  _callTimerInt = setInterval(()=>{
+    _callTimerSec++;
+    const m = Math.floor(_callTimerSec/60).toString().padStart(2,'0');
+    const s = (_callTimerSec%60).toString().padStart(2,'0');
+    const el = document.getElementById('callOvTimer');
+    if(el) el.textContent = m + ':' + s;
+  }, 1000);
+}
+
+function _showGroupParticipants(){
+  const el = document.getElementById('callOvParticipants');
+  if(!el) return;
+  el.style.display='flex';
+  el.innerHTML = _callParticipants.map(p=>
+    `<div class="call-ov-part">
+      <div class="call-ov-part-av" id="part_${p.id}">${(p.name||'?')[0].toUpperCase()}</div>
+      <div class="call-ov-part-name">${(p.name||'').split(' ')[0]}</div>
+    </div>`
+  ).join('');
+}
+
+function _updateParticipantSpeaking(peerId, speaking){
+  const el = document.getElementById('part_' + peerId);
+  if(el){ el.classList.toggle('speaking', speaking); }
+}
+
+function _showIncomingCall(sig){
+  const inc = document.getElementById('callIncoming');
+  inc.dataset.callId   = sig.callId;
+  inc.dataset.from     = sig.from;
+  inc.dataset.fromName = sig.fromName||'Someone';
+  inc.dataset.callType = sig.callType||'dm';
+  inc.dataset.threadId = sig.threadId||'';
+  document.getElementById('callIncAv').textContent   = (sig.fromName||'?')[0].toUpperCase();
+  document.getElementById('callIncName').textContent  = sig.fromName||'Someone';
+  document.getElementById('callIncType').textContent  =
+    sig.callType==='group' ? '👥 ' + (sig.className||'Class') + ' group call' : '📞 Incoming voice call';
+  inc.classList.add('active');
+  // Auto-decline after 30s
+  setTimeout(()=>{ if(inc.classList.contains('active')) declineCall(); }, 30000);
+}
+
+// ── Mute / Speaker toggles ─────────────────────────────────────
+function toggleCallMute(){
+  _callMuted = !_callMuted;
+  if(_callLocalStream){
+    _callLocalStream.getAudioTracks().forEach(t=> t.enabled = !_callMuted);
+  }
+  const btn = document.getElementById('callMuteBtn');
+  if(btn){ btn.textContent = _callMuted ? '🔇' : '🎤'; btn.classList.toggle('active', _callMuted); }
+  toast(_callMuted ? '🔇 Muted' : '🎤 Unmuted');
+}
+
+function toggleSpeaker(){
+  _callSpeaker = !_callSpeaker;
+  Object.values(_callAudioEls).forEach(el=>{ el.muted = !_callSpeaker; });
+  const btn = document.getElementById('callSpeakerBtn');
+  if(btn){ btn.textContent = _callSpeaker ? '🔊' : '🔈'; btn.classList.toggle('active', _callSpeaker); }
+}
+</script>
+
 </body>
 </html>
