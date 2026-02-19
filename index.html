@@ -907,6 +907,99 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
 .call-inc-btn.decline{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3);}
 .call-inc-btn:hover{transform:translateY(-1px);}
 </style>
+
+<!-- ===== FIREBASE ===== -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, collection, doc, setDoc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject, listAll } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyB3e7nL26P9F9TkksF9c_8PiNCejFXfYHM",
+    authDomain: "nurses-vault.firebaseapp.com",
+    databaseURL: "https://nurses-vault-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "nurses-vault",
+    storageBucket: "nurses-vault.firebasestorage.app",
+    messagingSenderId: "1005365121748",
+    appId: "1:1005365121748:web:743135c642a83e0e7e6141"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const storage = getStorage(app);
+  const googleProvider = new GoogleAuthProvider();
+
+  // Make Firebase available globally
+  window._fb = {
+    auth, db, storage, googleProvider,
+    // Auth functions
+    createUserWithEmailAndPassword: (email, pass) => createUserWithEmailAndPassword(auth, email, pass),
+    signInWithEmailAndPassword: (email, pass) => signInWithEmailAndPassword(auth, email, pass),
+    signInWithGoogle: () => signInWithPopup(auth, googleProvider),
+    signOut: () => signOut(auth),
+    onAuthStateChanged: (cb) => onAuthStateChanged(auth, cb),
+    updateProfile: (user, data) => updateProfile(user, data),
+    // Firestore functions
+    collection, doc, setDoc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
+    query, where, orderBy, onSnapshot, serverTimestamp,
+    // Storage functions
+    ref, uploadBytesResumable, getDownloadURL, deleteObject, listAll,
+    // Helper: upload a file and get download URL
+    uploadFile: async (path, file, onProgress) => {
+      const storageRef = ref(storage, path);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+      return new Promise((resolve, reject) => {
+        uploadTask.on('state_changed',
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            if (onProgress) onProgress(Math.round(progress));
+          },
+          (error) => reject(error),
+          async () => {
+            const url = await getDownloadURL(uploadTask.snapshot.ref);
+            resolve(url);
+          }
+        );
+      });
+    },
+    // Helper: save document to Firestore
+    saveDoc: async (collectionName, docId, data) => {
+      const ref = docId ? doc(db, collectionName, docId) : doc(collection(db, collectionName));
+      await setDoc(ref, { ...data, updatedAt: serverTimestamp() }, { merge: true });
+      return ref.id;
+    },
+    // Helper: get all documents from a collection
+    getCollection: async (collectionName) => {
+      const snap = await getDocs(collection(db, collectionName));
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    },
+    // Helper: listen to a collection in real-time
+    listenCollection: (collectionName, cb) => {
+      return onSnapshot(collection(db, collectionName), (snap) => {
+        cb(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
+    }
+  };
+
+  // Auth state listener - fires when user logs in or out
+  onAuthStateChanged(auth, (user) => {
+    window._currentUser = user || null;
+    // Dispatch event so rest of app can react
+    window.dispatchEvent(new CustomEvent('authStateChanged', { detail: { user } }));
+    if (user) {
+      console.log('✅ Firebase: Logged in as', user.email || user.displayName);
+    } else {
+      console.log('🔒 Firebase: Not logged in');
+    }
+  });
+
+  console.log('🔥 Firebase initialized: Auth, Firestore & Storage ready');
+</script>
+<!-- ===== END FIREBASE ===== -->
+
 </head>
 <body>
 
@@ -2575,6 +2668,12 @@ function doForgotPassword(){
   if(!user) return fail('Username not found. Check spelling and try again.');
   user.password = newPass;
   saveDB();
+  // Also update Firebase Auth password if user is currently signed in
+  if(window._fb && window._fb.auth && window._fb.auth.currentUser){
+    import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js').then(m=>{
+      m.updatePassword(window._fb.auth.currentUser, newPass).catch(()=>{});
+    });
+  }
   okEl.style.display='block';
   document.getElementById('forgotNewPass').value='';
   document.getElementById('forgotConfPass').value='';
@@ -2582,13 +2681,14 @@ function doForgotPassword(){
 }
 
 // ============================================================
-// LOGIN
+// LOGIN (Firebase)
 // ============================================================
-function doLogin(){
+async function doLogin(){
   closeSavedDropdown();
   const username = (document.getElementById('loginUsername').value||'').trim().toLowerCase();
   const pass     = (document.getElementById('loginPassword').value||'');
   const errEl    = document.getElementById('loginErr');
+  const btn      = document.querySelector('#loginForm .btn-primary');
 
   errEl.classList.remove('show');
 
@@ -2598,33 +2698,56 @@ function doLogin(){
     return;
   }
 
-  // Admin check
-  if(username === ADMIN_USERNAME && pass === ADMIN_PASSWORD){
-    currentRole = 'admin';
-    currentUser = { id: 'admin', name: ADMIN_NAME, username: ADMIN_USERNAME, role: 'admin', cls: 'All', phone: db.adminPhone||'', avatar: db.adminAvatar||'' };
-    saveAccount(username, pass, ADMIN_NAME, 'admin');
+  // Disable button while logging in
+  if(btn){ btn.disabled = true; btn.textContent = 'Signing in…'; }
+
+  try {
+    // Admin check (still local for speed)
+    if(username === ADMIN_USERNAME && pass === ADMIN_PASSWORD){
+      currentRole = 'admin';
+      currentUser = { id: 'admin', name: ADMIN_NAME, username: ADMIN_USERNAME, role: 'admin', cls: 'All', phone: db.adminPhone||'', avatar: db.adminAvatar||'' };
+      saveAccount(username, pass, ADMIN_NAME, 'admin');
+      if(btn){ btn.disabled=false; btn.textContent='Sign In →'; }
+      launchApp();
+      return;
+    }
+
+    // Convert username to internal email for Firebase
+    const email = username + '@nurses-vault.app';
+    const cred = await window._fb.signInWithEmailAndPassword(email, pass);
+    const fbUser = cred.user;
+
+    // Load user profile from Firestore
+    const { doc, getDoc } = window._fb;
+    const snap = await getDoc(doc(window._fb.db, 'users', fbUser.uid));
+    let profile = snap.exists() ? snap.data() : null;
+
+    if(!profile){
+      // Fallback: try old local db
+      const localUser = db.users.find(u => (u.username||'').toLowerCase() === username);
+      profile = localUser || { id: fbUser.uid, name: username, username, role: 'student', cls: 'ND ONE', classId: 'nd1' };
+    }
+
+    currentRole = profile.role || 'student';
+    currentUser = { ...profile, id: fbUser.uid };
+    saveAccount(username, pass, profile.name, profile.role);
+    if(btn){ btn.disabled=false; btn.textContent='Sign In →'; }
     launchApp();
-    return;
-  }
 
-  // Student / teacher check
-  const user = db.users.find(u => (u.username||'').toLowerCase() === username && u.password === pass);
-  if(!user){
-    errEl.textContent = 'Incorrect username or password.';
+  } catch(err) {
+    if(btn){ btn.disabled=false; btn.textContent='Sign In →'; }
+    let msg = 'Incorrect username or password.';
+    if(err.code === 'auth/too-many-requests') msg = 'Too many attempts. Please wait and try again.';
+    if(err.code === 'auth/network-request-failed') msg = 'Network error. Check your connection.';
+    errEl.textContent = msg;
     errEl.classList.add('show');
-    return;
   }
-
-  currentRole = user.role || 'student';
-  currentUser = user;
-  saveAccount(username, pass, user.name, user.role);
-  launchApp();
 }
 
 // ============================================================
-// SIGNUP
+// SIGNUP (Firebase)
 // ============================================================
-function doSignup(){
+async function doSignup(){
   const name     = (document.getElementById('signupName').value||'').trim();
   const username = (document.getElementById('signupUsername').value||'').trim().toLowerCase().replace(/\s+/g,'');
   const matric   = (document.getElementById('signupMatric')&&document.getElementById('signupMatric').value||'').trim().toUpperCase();
@@ -2632,9 +2755,9 @@ function doSignup(){
   const pass     = (document.getElementById('signupPassword').value||'');
   const confirm  = (document.getElementById('signupConfirm').value||'');
   const errEl    = document.getElementById('signupErr');
+  const btn      = document.querySelector('#signupForm .btn-primary');
 
   errEl.classList.remove('show');
-
   function fail(msg){ errEl.textContent = msg; errEl.classList.add('show'); }
 
   if(!name)            return fail('Please enter your full name.');
@@ -2645,35 +2768,148 @@ function doSignup(){
   if(pass.length < 6)  return fail('Password must be at least 6 characters.');
   if(pass !== confirm) return fail('Passwords do not match.');
   if(username === ADMIN_USERNAME) return fail('That username is not available.');
-  if(db.users.find(u => (u.username||'').toLowerCase() === username)) return fail('Username already taken.');
 
-  const clsObj = db.classes.find(c => c.id === cls);
-  const newUser = {
-    id: 'u_' + Date.now(),
-    name, username, matric, password: pass,
-    role: 'student',
-    cls: clsObj ? clsObj.name : 'ND ONE',
-    classId: cls
-  };
-  db.users.push(newUser);
-  saveDB();
+  // Check if username already taken in Firestore
+  if(btn){ btn.disabled=true; btn.textContent='Creating account…'; }
 
-  currentRole = 'student';
-  currentUser = newUser;
-  saveAccount(username, pass, name, 'student');
-  toast('Welcome, ' + name + '! 🎉');
-  launchApp();
+  try {
+    const { query, where, getDocs, collection, doc, setDoc, serverTimestamp } = window._fb;
+
+    // Check username uniqueness in Firestore
+    const usernameQuery = query(collection(window._fb.db, 'users'), where('username', '==', username));
+    const existing = await getDocs(usernameQuery);
+    if(!existing.empty){
+      if(btn){ btn.disabled=false; btn.textContent='Create Account →'; }
+      return fail('Username already taken. Choose another.');
+    }
+
+    // Also check local db (existing users)
+    if(db.users.find(u => (u.username||'').toLowerCase() === username)){
+      if(btn){ btn.disabled=false; btn.textContent='Create Account →'; }
+      return fail('Username already taken.');
+    }
+
+    const clsObj = db.classes.find(c => c.id === cls);
+    const email = username + '@nurses-vault.app';
+
+    // Create Firebase Auth account
+    const cred = await window._fb.createUserWithEmailAndPassword(email, pass);
+    const fbUser = cred.user;
+
+    // Update display name
+    await window._fb.updateProfile(fbUser, { displayName: name });
+
+    // Save full profile to Firestore
+    const profile = {
+      id: fbUser.uid,
+      name, username, matric,
+      role: 'student',
+      cls: clsObj ? clsObj.name : 'ND ONE',
+      classId: cls,
+      createdAt: serverTimestamp()
+    };
+    await setDoc(doc(window._fb.db, 'users', fbUser.uid), profile);
+
+    // Also save locally for offline support
+    const newUser = { ...profile, password: pass };
+    db.users.push(newUser);
+    saveDB();
+
+    currentRole = 'student';
+    currentUser = { ...profile };
+    saveAccount(username, pass, name, 'student');
+    toast('Welcome, ' + name + '! 🎉');
+    if(btn){ btn.disabled=false; btn.textContent='Create Account →'; }
+    launchApp();
+
+  } catch(err) {
+    if(btn){ btn.disabled=false; btn.textContent='Create Account →'; }
+    let msg = 'Sign up failed. Please try again.';
+    if(err.code === 'auth/email-already-in-use') msg = 'Username already taken. Choose another.';
+    if(err.code === 'auth/network-request-failed') msg = 'Network error. Check your connection.';
+    if(err.code === 'auth/weak-password') msg = 'Password must be at least 6 characters.';
+    fail(msg);
+  }
 }
 
 // ============================================================
 // LAUNCH APP
 // ============================================================
-function launchApp(){
+async function launchApp(){
   document.getElementById('authPage').style.display = 'none';
   document.getElementById('appWrap').style.display  = 'flex';
   setupRoleUI();
   renderSidebar();
   renderDashboard();
+  // Load shared data from Firestore in background
+  _syncFromFirestore();
+}
+
+async function _syncFromFirestore(){
+  if(!window._fb) return;
+  try{
+    const {collection,getDocs}=window._fb;
+    const firestoreDb=window._fb.db;
+
+    // Load classes
+    const clsSnap=await getDocs(collection(firestoreDb,'classes'));
+    if(!clsSnap.empty){
+      const fsCls=clsSnap.docs.map(d=>({...d.data(),id:d.id}));
+      fsCls.forEach(fc=>{
+        if(!db.classes.find(c=>c.id===fc.id)) db.classes.push(fc);
+      });
+    }
+
+    // Load courses
+    const coSnap=await getDocs(collection(firestoreDb,'courses'));
+    if(!coSnap.empty){
+      const fsCo=coSnap.docs.map(d=>({...d.data(),id:d.id}));
+      fsCo.forEach(fc=>{
+        if(!db.courses.find(c=>c.id===fc.id)) db.courses.push(fc);
+      });
+    }
+
+    // Load handouts
+    const hSnap=await getDocs(collection(firestoreDb,'handouts'));
+    if(!hSnap.empty){
+      const fsH=hSnap.docs.map(d=>({...d.data(),id:d.id}));
+      fsH.forEach(fh=>{
+        if(!db.handouts.find(h=>h.id===fh.id)) db.handouts.push(fh);
+        else {
+          // Update existing with latest data (e.g. fileURL)
+          const idx=db.handouts.findIndex(h=>h.id===fh.id);
+          if(idx>-1) db.handouts[idx]={...db.handouts[idx],...fh};
+        }
+      });
+    }
+
+    // Load results
+    const rSnap=await getDocs(collection(firestoreDb,'results'));
+    if(!rSnap.empty){
+      if(!db.results) db.results=[];
+      const fsR=rSnap.docs.map(d=>({...d.data(),id:d.id}));
+      fsR.forEach(fr=>{
+        if(!db.results.find(r=>r.id===fr.id)) db.results.push(fr);
+      });
+    }
+
+    // Load past questions
+    const pqSnap=await getDocs(collection(firestoreDb,'pastQuestions'));
+    if(!pqSnap.empty){
+      if(!db.pastQuestions) db.pastQuestions=[];
+      const fsPQ=pqSnap.docs.map(d=>({...d.data(),id:d.id}));
+      fsPQ.forEach(fp=>{
+        if(!db.pastQuestions.find(p=>p.id===fp.id)) db.pastQuestions.push(fp);
+      });
+    }
+
+    saveDB();
+    renderSidebar();
+    renderDashboard();
+    console.log('✅ Synced from Firestore: classes, courses, handouts, results, pastQuestions');
+  }catch(e){
+    console.warn('Firestore sync on launch failed:', e);
+  }
 }
 
 // Initialise signup class dropdown on page load
@@ -2681,9 +2917,10 @@ document.getElementById('signupClass').innerHTML =
   db.classes.map(c=>`<option value="${c.id}">${c.name} — ${c.full}</option>`).join('');
 
 // ============================================================
-// LOGOUT
+// LOGOUT (Firebase)
 // ============================================================
-function doLogout(){
+async function doLogout(){
+  try { await window._fb.signOut(); } catch(e) {}
   currentUser={}; currentRole='student';
   currentClassId=null; currentCourseId=null; previewId=null;
   document.getElementById('appWrap').style.display  = 'none';
@@ -3634,7 +3871,7 @@ function filterResultModalStudents(){
   }
 }
 
-function submitResult(){
+async function submitResult(){
   if(!db.results) db.results=[];
   const type       = document.getElementById('newResultType').value;
   const title      = document.getElementById('newResultTitle').value.trim();
@@ -3676,6 +3913,14 @@ function submitResult(){
   closeModal('addResultModal');
   renderResultsTable();
   toast(`Result saved for ${student.name} ✓`);
+
+  // Sync to Firestore
+  if(window._fb){
+    try{
+      const {doc,setDoc,serverTimestamp}=window._fb;
+      await setDoc(doc(window._fb.db,'results',result.id),{...result,createdAt:serverTimestamp()});
+    }catch(e){console.warn('Firestore sync (result):', e);}
+  }
 }
 
 function showCGPASummary(){
@@ -3787,12 +4032,19 @@ function showCGPASummary(){
   openModal('cgpaSummaryModal');
 }
 
-function deleteResult(id){
+async function deleteResult(id){
   if(!confirm('Delete this result?')) return;
   db.results = db.results.filter(r=>r.id!==id);
   saveDB();
   renderResultsTable();
   toast('Result deleted');
+  // Remove from Firestore
+  if(window._fb){
+    try{
+      const {doc,deleteDoc}=window._fb;
+      await deleteDoc(doc(window._fb.db,'results',id));
+    }catch(e){console.warn('Firestore delete (result):', e);}
+  }
 }
 
 // ============================================================
@@ -4306,17 +4558,25 @@ function addLecturerAccount(){
 // ============================================================
 // ADD CLASS
 // ============================================================
-function addClass(){
+async function addClass(){
   const name=document.getElementById('newClassName').value.trim();
   const full=document.getElementById('newClassFull').value.trim();
   const color=document.getElementById('newClassColor').value;
   if(!name||!full){toast('Please fill in all fields');return;}
-  db.classes.push({id:'cls_'+Date.now(),name,full,color});
+  const cls={id:'cls_'+Date.now(),name,full,color};
+  db.classes.push(cls);
   saveDB(); closeModal('addClassModal');
   document.getElementById('newClassName').value='';
   document.getElementById('newClassFull').value='';
   renderDashboard(); renderSidebar();
   toast(`Class "${name}" created ✓`);
+  // Sync to Firestore
+  if(window._fb){
+    try{
+      const {doc,setDoc,serverTimestamp}=window._fb;
+      await setDoc(doc(window._fb.db,'classes',cls.id),{...cls,createdAt:serverTimestamp(),createdBy:currentUser.id||'admin'});
+    }catch(e){console.warn('Firestore sync (class):', e);}
+  }
 }
 
 // ============================================================
@@ -4328,14 +4588,15 @@ function openAddCourseModal(){
   if(currentClassId) sel.value=currentClassId;
   openModal('addCourseModal');
 }
-function addCourse(){
+async function addCourse(){
   const title=document.getElementById('newCourseTitle').value.trim();
   const code=document.getElementById('newCourseCode').value.trim();
   const lecturer=document.getElementById('newCourseLecturer').value.trim();
   const classId=document.getElementById('newCourseClass').value;
   if(!title||!code){toast('Please fill in title and code');return;}
   const creditUnits = parseInt(document.getElementById('newCourseCreditUnits')?.value)||3;
-  db.courses.push({id:'co_'+Date.now(),classId,title,code,lecturer:lecturer||currentUser.name,creditUnits});
+  const course={id:'co_'+Date.now(),classId,title,code,lecturer:lecturer||currentUser.name,creditUnits};
+  db.courses.push(course);
   saveDB(); closeModal('addCourseModal');
   document.getElementById('newCourseTitle').value='';
   document.getElementById('newCourseCode').value='';
@@ -4343,6 +4604,13 @@ function addCourse(){
   if(currentClassId===classId) renderCourses(classId);
   renderDashboard();
   toast(`Course "${title}" added ✓`);
+  // Sync to Firestore
+  if(window._fb){
+    try{
+      const {doc,setDoc,serverTimestamp}=window._fb;
+      await setDoc(doc(window._fb.db,'courses',course.id),{...course,createdAt:serverTimestamp(),createdBy:currentUser.id||'admin'});
+    }catch(e){console.warn('Firestore sync (course):', e);}
+  }
 }
 
 // ============================================================
@@ -4361,7 +4629,7 @@ function openAddHandoutModal(){
   openModal('addHandoutModal');
 }
 
-function addHandout(){
+async function addHandout(){
   const title=document.getElementById('newHandoutTitle').value.trim();
   const courseId=document.getElementById('newHandoutCourse').value;
   const type=document.getElementById('newHandoutType').value;
@@ -4373,23 +4641,47 @@ function addHandout(){
   const date=months[now.getMonth()]+' '+now.getDate();
   const handout={id,courseId,title,type,date,lecturer:currentUser.name};
 
-  const doFinish=()=>{
+  const btn=document.querySelector('#addHandoutModal .btn-primary');
+  if(btn){btn.disabled=true;btn.textContent='Uploading…';}
+
+  const doFinish=async()=>{
     db.handouts.push(handout); saveDB();
     closeModal('addHandoutModal');
     if(currentCourseId===courseId) renderHandouts(courseId);
     renderDashboard();
     toast(`Handout "${title}" uploaded ✓`);
+    if(btn){btn.disabled=false;btn.textContent='Add Handout';}
+    if(window._fb){
+      try{
+        const {doc,setDoc,serverTimestamp}=window._fb;
+        await setDoc(doc(window._fb.db,'handouts',id),{...handout,createdAt:serverTimestamp(),uploadedBy:currentUser.id||'admin'});
+      }catch(e){console.warn('Firestore sync (handout):', e);}
+    }
   };
 
   if(fileInp.files[0]){
     const file=fileInp.files[0];
+    if(window._fb){
+      try{
+        toast('Uploading file… 0%');
+        const downloadURL = await window._fb.uploadFile(
+          `handouts/${id}/${file.name}`, file,
+          (pct)=>{ toast(`Uploading… ${pct}%`); }
+        );
+        handout.fileURL=downloadURL;
+        handout.fileName=file.name;
+        handout.fileMime=file.type;
+        await doFinish();
+        return;
+      }catch(e){ console.warn('Storage upload failed, using localStorage fallback:', e); }
+    }
     const reader=new FileReader();
     reader.onload=e=>{saveFileData(id,{name:file.name,dataUrl:e.target.result,mime:file.type});doFinish();};
     reader.readAsDataURL(file);
-  } else { doFinish(); }
+  } else { await doFinish(); }
 }
 
-function deleteHandout(id){
+async function deleteHandout(id){
   if(!confirm('Delete this handout?')) return;
   db.handouts=db.handouts.filter(h=>h.id!==id);
   deleteFileData(id);
@@ -4397,6 +4689,13 @@ function deleteHandout(id){
   if(currentCourseId) renderHandouts(currentCourseId);
   renderDashboard();
   toast('Handout deleted');
+  // Remove from Firestore
+  if(window._fb){
+    try{
+      const {doc,deleteDoc}=window._fb;
+      await deleteDoc(doc(window._fb.db,'handouts',id));
+    }catch(e){console.warn('Firestore delete (handout):', e);}
+  }
 }
 
 // ============================================================
@@ -4417,7 +4716,7 @@ function openModal(id){
   }
   document.getElementById(id).classList.add('open');
 }
-function submitUpload(){
+async function submitUpload(){
   const title=document.getElementById('uploadTitle').value.trim();
   const courseId=document.getElementById('uploadCourse').value;
   const type=document.getElementById('uploadType').value;
@@ -4428,18 +4727,44 @@ function submitUpload(){
   const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const date=months[now.getMonth()]+' '+now.getDate();
   const handout={id,courseId,title,type,date,lecturer:currentUser.name};
-  const doFinish=()=>{
+
+  const btn=document.querySelector('#uploadModal .btn-primary');
+  if(btn){btn.disabled=true;btn.textContent='Uploading…';}
+
+  const doFinish=async()=>{
     db.handouts.push(handout); saveDB();
     closeModal('uploadModal');
     renderDashboard();
     toast(`"${title}" uploaded ✓`);
+    if(btn){btn.disabled=false;btn.textContent='Upload';}
+    if(window._fb){
+      try{
+        const {doc,setDoc,serverTimestamp}=window._fb;
+        await setDoc(doc(window._fb.db,'handouts',id),{...handout,createdAt:serverTimestamp(),uploadedBy:currentUser.id||'admin'});
+      }catch(e){console.warn('Firestore sync (upload):', e);}
+    }
   };
+
   if(fileInp.files[0]){
     const file=fileInp.files[0];
+    if(window._fb){
+      try{
+        toast('Uploading file… 0%');
+        const downloadURL = await window._fb.uploadFile(
+          `handouts/${id}/${file.name}`, file,
+          (pct)=>{ toast(`Uploading… ${pct}%`); }
+        );
+        handout.fileURL=downloadURL;
+        handout.fileName=file.name;
+        handout.fileMime=file.type;
+        await doFinish();
+        return;
+      }catch(e){ console.warn('Storage upload failed, using localStorage fallback:', e); }
+    }
     const reader=new FileReader();
     reader.onload=e=>{saveFileData(id,{name:file.name,dataUrl:e.target.result,mime:file.type});doFinish();};
     reader.readAsDataURL(file);
-  } else { doFinish(); }
+  } else { await doFinish(); }
 }
 
 function autoDetectType(fname,selId){
@@ -4553,6 +4878,28 @@ function openPreview(id){
 
   // Show spinner
   pvShowSpinner();
+
+  // Check if handout has a Firebase Storage URL
+  if(h.fileURL){
+    document.getElementById('pvInfoSize').textContent = h.fileName || 'Cloud file';
+    document.getElementById('pvDlBtn').disabled=false;
+    document.getElementById('pvDlBtn').onclick=()=>{ window.open(h.fileURL,'_blank'); };
+    const isImage = h.type==='img' || (h.fileMime && h.fileMime.startsWith('image/'));
+    const isPdf   = h.type==='pdf' || h.fileMime==='application/pdf';
+    if(isImage){
+      pvState.isImg=true;
+      pvShowImage({dataUrl:h.fileURL, mime:h.fileMime}, h);
+      pvHidePdfNav();
+    } else if(isPdf){
+      pvState.isImg=false;
+      pvHidePdfNav();
+      loadPdfJs(()=> pvLoadPdf(h.fileURL));
+    } else {
+      pvShowNoFile(h);
+      document.getElementById('pvInfoSize').textContent='Click download to open file';
+    }
+    return;
+  }
 
   const fd = loadFileData(id);
 
@@ -5363,13 +5710,20 @@ function renderPQBanks(){
   }).join('');
 }
 
-function deletePQBank(id,e){
+async function deletePQBank(id,e){
   e.stopPropagation();
   if(!confirm('Delete this question bank? This cannot be undone.')) return;
   db.pastQuestions=db.pastQuestions.filter(b=>b.id!==id);
   saveDB();
   renderPQBanks();
   toast('Question bank deleted.');
+  // Remove from Firestore
+  if(window._fb){
+    try{
+      const {doc,deleteDoc}=window._fb;
+      await deleteDoc(doc(window._fb.db,'pastQuestions',id));
+    }catch(e){console.warn('Firestore delete (pastQuestion):', e);}
+  }
 }
 
 // ============================================================
@@ -5632,7 +5986,7 @@ function _parseStream(raw){
   return questions;
 }
 
-function savePQBank(){
+async function savePQBank(){
   const title=(document.getElementById('pqBankTitle').value||'').trim();
   const year=(document.getElementById('pqBankYear').value||'').trim();
   const courseId=document.getElementById('pqBankCourse').value;
@@ -5655,6 +6009,14 @@ function savePQBank(){
   renderPQBanks();
   toast(`${_parsedQuestions.length} questions imported into "${title}" ✓`);
   _parsedQuestions=[];
+
+  // Sync to Firestore
+  if(window._fb){
+    try{
+      const {doc,setDoc,serverTimestamp}=window._fb;
+      await setDoc(doc(window._fb.db,'pastQuestions',bank.id),{...bank,syncedAt:serverTimestamp()});
+    }catch(e){console.warn('Firestore sync (pastQuestions):', e);}
+  }
 }
 
 // ============================================================
