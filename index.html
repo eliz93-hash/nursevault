@@ -3884,18 +3884,37 @@ function doAdminLogin() {
   var err = document.getElementById('adm-err');
   var btn = document.getElementById('adm-login-btn');
   if (!u || !p) { err.textContent = '⚠ Please enter both username and password.'; return; }
+  if (u !== ADMIN_USER.toLowerCase() || p !== ADMIN_PASS) {
+    err.textContent = '⚠ Invalid credentials. Access denied.';
+    return;
+  }
   btn.disabled = true;
   btn.innerHTML = '<span class="spin"></span> Verifying...';
-  setTimeout(function(){
+
+  // Sign into Firebase with the admin account so Firestore writes are authenticated
+  function proceedToAdmin() {
     btn.disabled = false; btn.textContent = 'Access Admin Panel →';
-    if (u === ADMIN_USER.toLowerCase() && p === ADMIN_PASS) {
-      document.getElementById('adm-user').value = '';
-      document.getElementById('adm-pw').value = '';
-      go('admin');
-    } else {
-      err.textContent = '⚠ Invalid credentials. Access denied.';
-    }
-  }, 900);
+    document.getElementById('adm-user').value = '';
+    document.getElementById('adm-pw').value = '';
+    go('admin');
+  }
+
+  if (window._fbSignIn) {
+    // Use admin@nurseprep.ng + admin password as the Firebase auth identity
+    // IMPORTANT: Create this account in Firebase Console → Authentication if it doesn't exist yet
+    window._fbSignIn('admin@nurseprep.ng', p)
+      .then(function() { proceedToAdmin(); })
+      .catch(function(e) {
+        // Firebase sign-in failed (account may not exist yet) — still allow admin panel access
+        // but Firestore writes requiring auth will fail until you create the Firebase account
+        console.warn('Admin Firebase sign-in failed:', e.message);
+        err.innerHTML = '<span style="color:#e67e22">⚠ Admin panel open but Firebase sign-in failed.<br>Create <strong>admin@nurseprep.ng</strong> in Firebase Console → Authentication to enable Firestore sync.</span>';
+        setTimeout(proceedToAdmin, 3000);
+      });
+  } else {
+    // Firebase not loaded yet — proceed anyway
+    setTimeout(proceedToAdmin, 900);
+  }
 }
 
 function doAdminLogout() {
