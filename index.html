@@ -3520,8 +3520,11 @@ service cloud.firestore {
 // =========================================================
 // CONSTANTS
 // =========================================================
-var ADMIN_USER = 'admin 123';
+var ADMIN_USER = 'admin';
 var ADMIN_PASS = 'admin123';
+// Firebase account for admin Firestore access
+// MUST match an account in Firebase Console → Authentication
+var ADMIN_FIREBASE_EMAIL = 'admin@nurseprep.ng';
 var FREE_LIM = 10;
 
 // =========================================================
@@ -3884,23 +3887,33 @@ function doAdminLogin() {
   var err = document.getElementById('adm-err');
   var btn = document.getElementById('adm-login-btn');
   if (!u || !p) { err.textContent = '⚠ Please enter both username and password.'; return; }
+  if (u !== ADMIN_USER.toLowerCase() || p !== ADMIN_PASS) {
+    err.textContent = '⚠ Invalid credentials. Access denied.';
+    return;
+  }
   btn.disabled = true;
-  btn.innerHTML = '<span class="spin"></span> Verifying...';
-  setTimeout(function(){
+  btn.innerHTML = '<span class="spin"></span> Signing in...';
+  document.getElementById('adm-user').value = '';
+  document.getElementById('adm-pw').value = '';
+
+  function enterAdmin() {
     btn.disabled = false; btn.textContent = 'Access Admin Panel →';
-    if (u === ADMIN_USER.toLowerCase() && p === ADMIN_PASS) {
-      document.getElementById('adm-user').value = '';
-      document.getElementById('adm-pw').value = '';
-      if (window._fbSignIn) {
-        window._fbSignIn('admin@nurseprep.ng', p).catch(function(e){
-          console.warn('Admin Firebase auth: create admin@nurseprep.ng in Firebase Console:', e.message);
-        });
-      }
-      go('admin');
-    } else {
-      err.textContent = '⚠ Invalid credentials. Access denied.';
-    }
-  }, 900);
+    go('admin');
+  }
+
+  if (window._fbSignIn) {
+    window._fbSignIn(ADMIN_FIREBASE_EMAIL, ADMIN_PASS)
+      .then(function() {
+        enterAdmin();
+      })
+      .catch(function(e) {
+        btn.disabled = false; btn.textContent = 'Access Admin Panel →';
+        err.innerHTML = '⚠ Firebase sign-in failed: <strong>' + e.message + '</strong><br>' +
+          'Go to Firebase Console → Authentication → Add user: <strong>' + ADMIN_FIREBASE_EMAIL + '</strong> / <strong>' + ADMIN_PASS + '</strong>';
+      });
+  } else {
+    setTimeout(enterAdmin, 900);
+  }
 }
 
 function doAdminLogout() {
@@ -4017,7 +4030,7 @@ async function forceSyncAllToFirestore() {
     return;
   }
   if(!window._fbGetUid || !window._fbGetUid()) {
-    if(msg) msg.innerHTML = '<span style="color:#e74c3c">❌ You must be <strong>logged in</strong> to push to Firestore. Sign in first then try again.</span>';
+    if(msg) msg.innerHTML = '<span style="color:#e74c3c">❌ Not signed into Firebase. Please log out and log back into the admin panel.</span>';
     if(btn) { btn.disabled = false; btn.textContent = '☁️ Force Push All Questions to Firestore'; }
     return;
   }
@@ -9145,8 +9158,14 @@ go('splash');
   }
 
   // ── Auth state listener ──
+  var ADMIN_FB_EMAIL = 'admin@nurseprep.ng'; // skip student flow for admin account
   onAuthStateChanged(auth, async function(user) {
     if(user) {
+      // Admin Firebase account — just set uid for Firestore writes, don't load student data
+      if(user.email === ADMIN_FB_EMAIL) {
+        window._adminFirebaseUid = user.uid;
+        return;
+      }
       try {
         var profileRef = userRef(user.uid, 'profile/data');
         var snap = await getDoc(profileRef);
