@@ -5179,31 +5179,47 @@ function doLogin() {
   btn.disabled=true; btn.innerHTML='<span class="spin"></span> Logging in...';
 
   var email = emailOrUser;
-  if(emailOrUser.indexOf('@') === -1) {
-    var found = accounts.find(function(a){ return (a.username||'').toLowerCase() === emailOrUser.toLowerCase(); });
-    if(found && found.email) { email = found.email; }
-    else {
+
+  function _attemptLogin(email) {
+    if(window._fbSignIn) {
+      window._fbSignIn(email, pass).then(function() {
+        btn.disabled=false; btn.textContent='Log In →';
+        document.getElementById('le').value='';
+        document.getElementById('lp').value='';
+      }).catch(function(err) {
+        btn.disabled=false; btn.textContent='Log In →';
+        var lerr3=document.getElementById('l-err');
+        if(lerr3){ lerr3.style.display='block'; lerr3.textContent='⚠ ' + _fbFriendlyError(err.code); }
+      });
+    } else {
       btn.disabled=false; btn.textContent='Log In →';
-      var lerr2=document.getElementById('l-err');
-      if(lerr2){ lerr2.style.display='block'; lerr2.textContent='⚠ No account found. Please use your email or create an account first.'; }
-      return;
+      var lerr4=document.getElementById('l-err');
+      if(lerr4){ lerr4.style.display='block'; lerr4.textContent='⚠ Still connecting. Please try again in a moment.'; }
     }
   }
 
-  if(window._fbSignIn) {
-    window._fbSignIn(email, pass).then(function() {
+  if(emailOrUser.indexOf('@') === -1) {
+    // Username entered — try local accounts first, then Firestore global index
+    var found = accounts.find(function(a){ return (a.username||'').toLowerCase() === emailOrUser.toLowerCase(); });
+    if(found && found.email) {
+      _attemptLogin(found.email);
+    } else if(window._fbFindEmailByUsername) {
+      window._fbFindEmailByUsername(emailOrUser).then(function(foundEmail) {
+        if(foundEmail) {
+          _attemptLogin(foundEmail);
+        } else {
+          btn.disabled=false; btn.textContent='Log In →';
+          var lerr2=document.getElementById('l-err');
+          if(lerr2){ lerr2.style.display='block'; lerr2.textContent='⚠ No account found for that username. Try using your email instead.'; }
+        }
+      });
+    } else {
       btn.disabled=false; btn.textContent='Log In →';
-      document.getElementById('le').value='';
-      document.getElementById('lp').value='';
-    }).catch(function(err) {
-      btn.disabled=false; btn.textContent='Log In →';
-      var lerr3=document.getElementById('l-err');
-      if(lerr3){ lerr3.style.display='block'; lerr3.textContent='⚠ ' + _fbFriendlyError(err.code); }
-    });
+      var lerr2=document.getElementById('l-err');
+      if(lerr2){ lerr2.style.display='block'; lerr2.textContent='⚠ No account found. Please use your email address.'; }
+    }
   } else {
-    btn.disabled=false; btn.textContent='Log In →';
-    var lerr4=document.getElementById('l-err');
-    if(lerr4){ lerr4.style.display='block'; lerr4.textContent='⚠ Still connecting. Please try again in a moment.'; }
+    _attemptLogin(email);
   }
 }
 
@@ -8708,7 +8724,7 @@ go('splash');
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
            signOut, onAuthStateChanged, updateProfile, sendPasswordResetEmail }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-  import { getFirestore, doc, setDoc, getDoc, collection, getDocs }
+  import { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, where }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -8810,6 +8826,14 @@ go('splash');
             joined: window.ME.joined || new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})
           };
           await setDoc(profileRef, newProfile, { merge: true });
+          // Index username globally so it can be looked up on any device
+          if(newProfile.username && newProfile.email) {
+            try {
+              var unRef = doc(db, 'global', 'usernames');
+              var unObj = {}; unObj[newProfile.username.toLowerCase()] = newProfile.email;
+              await setDoc(unRef, unObj, { merge: true });
+            } catch(e){ console.warn('Username index error:', e); }
+          }
           window.ME = newProfile;
           window.isPro = false;
           window.accounts = [newProfile];
@@ -8835,6 +8859,30 @@ go('splash');
     if(window.go) window.go('splash');
   };
   window._fbGetUid = function() { return auth.currentUser ? auth.currentUser.uid : null; };
+
+  // Look up a user's email by username across all Firestore users
+  window._fbFindEmailByUsername = async function(username) {
+    try {
+      // We store profiles at users/{uid}/profile/data
+      // We need to search — use a global username index in global/usernames
+      var snap = await getDoc(doc(db, 'global', 'usernames'));
+      if(snap.exists()) {
+        var data = snap.data();
+        var uname = username.toLowerCase();
+        if(data[uname]) return data[uname]; // returns email
+      }
+    } catch(e) { console.warn('Username lookup error:', e); }
+    return null;
+  };
+
+  // Save username → email mapping to global index on register
+  window._fbIndexUsername = async function(username, email) {
+    try {
+      var ref = doc(db, 'global', 'usernames');
+      var obj = {}; obj[username.toLowerCase()] = email;
+      await setDoc(ref, obj, { merge: true });
+    } catch(e) { console.warn('Username index error:', e); }
+  };
   window._fbSendPasswordReset = function(email) { return sendPasswordResetEmail(auth, email); };
 
   var logoutEl = document.getElementById('logout-btn-fb');
