@@ -3621,32 +3621,28 @@ function _fbLoad(path, fallback, cb) {
 function saveAcc() {
   if(!ME) return;
   var profile = {
-    id: ME.id, firstName: ME.firstName, lastName: ME.lastName,
-    name: ME.name, username: ME.username, email: ME.email,
+    id: ME.id||ME.uid, firstName: ME.firstName||'', lastName: ME.lastName||'',
+    name: ME.name||'', username: ME.username||'', email: ME.email||'',
     phone: ME.phone||'', yearLevel: ME.yearLevel||'',
     photo: ME.photo||null, isPro: ME.isPro||false,
     totalAns: ME.totalAns||0, totalCor: ME.totalCor||0,
-    joined: ME.joined||'', lastActive: ME.lastActive||'',
+    joined: ME.joined||'', lastActive: new Date().toISOString(),
     proCode: ME.proCode||null, uid: ME.uid||null
   };
   _fbSave('profile/data', profile);
-  // Also keep local fallback
-  try { localStorage.setItem('np_acc', JSON.stringify([profile])); } catch(x){}
 }
 function loadAcc() {
-  try { var d=localStorage.getItem('np_acc'); if(d) accounts=JSON.parse(d); } catch(x){}
+  // Profile is loaded from Firestore by onAuthStateChanged — nothing to do here
 }
 
 // --- Admin codes ---
 function saveCodes() {
   _fbSave('admin/codes', {codes: generatedCodes});
-  try { localStorage.setItem('np_codes', JSON.stringify(generatedCodes)); } catch(x){}
 }
 function loadCodes() {
-  try { var d=localStorage.getItem('np_codes'); if(d) generatedCodes=JSON.parse(d); } catch(x){}
-  if(_fbGetDoc) {
+  if(window._fbGetDoc) {
     _fbGetDoc('global/admin_codes').then(function(data){
-      if(data && data.codes) { generatedCodes = data.codes; try { localStorage.setItem('np_codes', JSON.stringify(generatedCodes)); } catch(e){} }
+      if(data && data.codes) generatedCodes = data.codes;
     }).catch(function(){});
   }
 }
@@ -3654,13 +3650,11 @@ function loadCodes() {
 // --- Question DB ---
 function saveDB() {
   _fbSave('admin/questiondb', {db: DB});
-  try { localStorage.setItem('np_db', JSON.stringify(DB)); } catch(x){}
 }
 function loadDB() {
-  try { var d=localStorage.getItem('np_db'); if(d) DB=JSON.parse(d); } catch(x){}
-  if(_fbGetDoc) {
+  if(window._fbGetDoc) {
     _fbGetDoc('global/question_db').then(function(data){
-      if(data && data.db) { DB = data.db; try { localStorage.setItem('np_db', JSON.stringify(DB)); } catch(e){} }
+      if(data && data.db) DB = data.db;
     }).catch(function(){});
   }
 }
@@ -3668,59 +3662,45 @@ function loadDB() {
 // --- Performance / quiz history ---
 function savePerformance() {
   _fbSave('performance/history', {history: quizHistory});
-  try { localStorage.setItem('np_perf', JSON.stringify(quizHistory)); } catch(x){}
 }
 function loadPerformance() {
-  try { var d=localStorage.getItem('np_perf'); if(d) quizHistory=JSON.parse(d); } catch(x){}
-  _fbLoad('performance/history', null, function(data){ if(data && data.history) quizHistory = data.history; });
+  _fbLoad('performance/history', null, function(data){ if(data && data.history) { quizHistory = data.history; renderPerformance && renderPerformance(); } });
 }
 
 // --- Notification settings ---
 function saveNotifSettings() {
   _fbSave('settings/notifications', notificationSettings);
-  try { localStorage.setItem('np_notif_settings', JSON.stringify(notificationSettings)); } catch(x){}
 }
 function loadNotifSettings() {
-  try { var d=localStorage.getItem('np_notif_settings'); if(d) notificationSettings=JSON.parse(d); else notificationSettings={chat:true,admin:true,questions:true}; } catch(x){}
-  _fbLoad('settings/notifications', null, function(data){ if(data) notificationSettings=data; });
+  _fbLoad('settings/notifications', {chat:true,admin:true,questions:true}, function(data){ if(data) notificationSettings=data; });
 }
 
 // --- Notifications ---
 function saveNotifications() {
   _fbSave('notifications/list', {items: notifications});
-  try { localStorage.setItem('np_notifs', JSON.stringify(notifications)); } catch(x){}
 }
 function loadNotifications() {
-  try { var d=localStorage.getItem('np_notifs'); if(d) notifications=JSON.parse(d); } catch(x){}
   _fbLoad('notifications/list', null, function(data){ if(data && data.items) notifications=data.items; });
 }
 function saveStreak() {
-  // Streak is derived from quizHistory dates — no extra storage needed
-  // Just ensure the lastPractice date is logged
-  try { localStorage.setItem('np_last_practice', new Date().toDateString()); } catch(x){}
+  _fbSave('performance/history', {history: quizHistory});
 }
 function saveMockDB() {
   _fbSave('admin/mockdb', {db: MOCK_DB});
-  try { localStorage.setItem('np_mockdb', JSON.stringify(MOCK_DB)); } catch(x){}
 }
 function loadMockDB() {
-  try { var d=localStorage.getItem('np_mockdb'); if(d) MOCK_DB=JSON.parse(d); } catch(x){}
   _fbLoad('admin/mockdb', null, function(data){ if(data && data.db) MOCK_DB=data.db; });
 }
 function saveMockSettings() {
   _fbSave('settings/mock', mockSettings);
-  try { localStorage.setItem('np_mocksettings', JSON.stringify(mockSettings)); } catch(x){}
 }
 function loadMockSettings() {
-  try { var d=localStorage.getItem('np_mocksettings'); if(d) mockSettings=JSON.parse(d); } catch(x){}
   _fbLoad('settings/mock', null, function(data){ if(data) mockSettings=data; });
 }
 function saveMockHistory() {
   _fbSave('mock/history', {history: mockHistory});
-  try { localStorage.setItem('np_mockhistory', JSON.stringify(mockHistory)); } catch(x){}
 }
 function loadMockHistory() {
-  try { var d=localStorage.getItem('np_mockhistory'); if(d) mockHistory=JSON.parse(d); } catch(x){}
   _fbLoad('mock/history', null, function(data){ if(data && data.history) mockHistory=data.history; });
 }
 
@@ -5760,17 +5740,10 @@ function sendAdminMsg() {
 
 function saveChat() {
   _fbSave('chat/log', {log: chatLog});
-  try { localStorage.setItem('np_chat', JSON.stringify(chatLog)); } catch(x){}
 }
 
 function loadChat() {
-  try {
-    var d=localStorage.getItem('np_chat');
-    if(d) chatLog=JSON.parse(d);
-    else chatLog = defaultMsgs.slice();
-  } catch(x){
-    chatLog = defaultMsgs.slice();
-  }
+  chatLog = defaultMsgs.slice();
   _fbLoad('chat/log', null, function(data){ if(data && data.log && data.log.length) { chatLog=data.log; renderChat && renderChat(); } });
 }
 
@@ -6799,17 +6772,14 @@ var referralData = {
 
 function saveReferral() {
   _fbSave('referral/data', referralData);
-  try { localStorage.setItem('np_referral_' + (ME ? ME.id : 'guest'), JSON.stringify(referralData)); } catch(x){}
 }
 function loadReferral() {
-  if(!ME) return;
-  try {
-    var d = localStorage.getItem('np_referral_' + ME.id);
-    if(d) { referralData = JSON.parse(d); }
-    else { referralData = { code: genRefCode(), referrals: [], claimedMilestones: [], bonusYears: [], bonusQPerSession: 0 }; saveReferral(); }
+  var def = { code: genRefCode(), referrals: [], claimedMilestones: [], bonusYears: [], bonusQPerSession: 0 };
+  _fbLoad('referral/data', def, function(data){
+    if(data && data.code) referralData = data;
+    else { referralData = def; saveReferral(); }
     if(!referralData.code) { referralData.code = genRefCode(); saveReferral(); }
-  } catch(x){ referralData = { code: genRefCode(), referrals: [], claimedMilestones: [], bonusYears: [], bonusQPerSession: 0 }; }
-  _fbLoad('referral/data', null, function(data){ if(data && data.code) referralData=data; });
+  });
 }
 
 function genRefCode() {
@@ -7431,10 +7401,8 @@ var customYears = []; // extra years added by admin
 
 function saveCustomYears() {
   _fbSave('admin/custom_years', {years: customYears});
-  try { localStorage.setItem('np_custom_years', JSON.stringify(customYears)); } catch(x){}
 }
 function loadCustomYears() {
-  try { var d = localStorage.getItem('np_custom_years'); if(d) customYears = JSON.parse(d); } catch(x){}
   _fbLoad('admin/custom_years', null, function(data){ if(data && data.years) customYears=data.years; });
 }
 
@@ -7661,18 +7629,14 @@ var _rotationCheckInterval = null;
 
 function saveMockBanks() {
   _fbSave('admin/mock_banks', {banks: MOCK_BANKS});
-  try { localStorage.setItem('np_mock_banks', JSON.stringify(MOCK_BANKS)); } catch(x){}
 }
 function loadMockBanks() {
-  try { var d = localStorage.getItem('np_mock_banks'); if(d) MOCK_BANKS = JSON.parse(d); } catch(x){}
   _fbLoad('admin/mock_banks', null, function(data){ if(data && data.banks) MOCK_BANKS=data.banks; });
 }
 function saveMockSchedule() {
   _fbSave('admin/mock_schedule', mockSchedule);
-  try { localStorage.setItem('np_mock_schedule', JSON.stringify(mockSchedule)); } catch(x){}
 }
 function loadMockSchedule() {
-  try { var d = localStorage.getItem('np_mock_schedule'); if(d) mockSchedule = JSON.parse(d); } catch(x){}
   _fbLoad('admin/mock_schedule', null, function(data){ if(data) mockSchedule=data; });
 }
 
@@ -8040,12 +8004,10 @@ var _lastQuizState = null; // {year, paper, qi, total, mode}
 function saveLastQuizState() {
   if(!QYear || !QPaper || QQ.length === 0) return;
   _lastQuizState = { year: QYear, paper: QPaper, qi: QI, total: QQ.length, mode: QMode };
-  try { localStorage.setItem('np_last_quiz', JSON.stringify(_lastQuizState)); } catch(e){}
   _fbSave('quiz/last_state', _lastQuizState);
 }
 
 function loadLastQuizState() {
-  try { var d = localStorage.getItem('np_last_quiz'); if(d) _lastQuizState = JSON.parse(d); } catch(e){}
   _fbLoad('quiz/last_state', null, function(data){ if(data) { _lastQuizState=data; updateContinueCard && updateContinueCard(); } });
 }
 
@@ -8160,11 +8122,9 @@ var bookmarks = []; // [{year, paper, qi, q:{q,o,c,e}}]
 
 function saveBookmarks() {
   _fbSave('bookmarks/list', {items: bookmarks});
-  try { localStorage.setItem('np_bm', JSON.stringify(bookmarks)); } catch(e){}
 }
 function loadBookmarks() {
-  try { var d = localStorage.getItem('np_bm'); if(d) bookmarks = JSON.parse(d); } catch(e){}
-  _fbLoad('bookmarks/list', null, function(data){ if(data && data.items) bookmarks=data.items; });
+  _fbLoad('bookmarks/list', null, function(data){ if(data && data.items) { bookmarks=data.items; renderBookmarks && renderBookmarks(); } });
 }
 
 function getCurrentBookmarkKey() {
@@ -8748,7 +8708,7 @@ go('splash');
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
            signOut, onAuthStateChanged, updateProfile, sendPasswordResetEmail }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-  import { getFirestore, doc, setDoc, getDoc }
+  import { getFirestore, doc, setDoc, getDoc, collection, getDocs }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -8764,74 +8724,88 @@ go('splash');
   const auth = getAuth(app);
   const db = getFirestore(app);
 
-  // Wire up the Firestore helpers used by the save/load functions
+  // ── Core Firestore helpers ──
+  // path is always 'collection/docId' under users/{uid}/
+  function userRef(uid, path) {
+    var parts = path.split('/');
+    return doc(db, 'users', uid, parts[0], parts[1]);
+  }
+
+  window._fbSave = function(path, data) {
+    var uid = auth.currentUser ? auth.currentUser.uid : (window.ME && window.ME.uid);
+    if(!uid) { console.warn('_fbSave: no uid, skipping', path); return; }
+    var ref = userRef(uid, path);
+    setDoc(ref, data, { merge: true }).catch(function(e){ console.error('Firestore save error:', path, e.message); });
+  };
+
+  window._fbLoad = function(path, fallback, cb) {
+    var uid = auth.currentUser ? auth.currentUser.uid : (window.ME && window.ME.uid);
+    if(!uid) { if(fallback !== null) cb(fallback); return; }
+    var ref = userRef(uid, path);
+    getDoc(ref).then(function(snap) {
+      cb(snap.exists() ? snap.data() : fallback);
+    }).catch(function(e){ console.error('Firestore load error:', path, e.message); if(fallback !== null) cb(fallback); });
+  };
+
   window._fbSetDoc = async function(path, data) {
     var parts = path.split('/');
     var ref = doc(db, parts[0], parts[1], parts[2], parts[3]);
     await setDoc(ref, data, { merge: true });
   };
+
   window._fbGetDoc = async function(path) {
     var parts = path.split('/');
-    var ref;
-    if(parts.length === 2) ref = doc(db, parts[0], parts[1]);
-    else ref = doc(db, parts[0], parts[1], parts[2], parts[3]);
+    var ref = parts.length === 2 ? doc(db, parts[0], parts[1]) : doc(db, parts[0], parts[1], parts[2], parts[3]);
     var snap = await getDoc(ref);
     return snap.exists() ? snap.data() : null;
   };
 
-  // Override _fbSave and _fbLoad to use module-scoped functions
-  window._fbSave = function(path, data) {
-    if(!window.ME || !window.ME.uid) return;
-    try { localStorage.setItem('fb_cache_'+path, JSON.stringify(data)); } catch(e){}
-    var uid = window.ME.uid;
-    var parts = path.split('/');
-    var ref = doc(db, 'users', uid, parts[0], parts[1]);
-    setDoc(ref, data, { merge: true }).catch(function(e){ console.warn('Save error:', path, e.message); });
-  };
-  window._fbLoad = function(path, fallback, cb) {
-    try { var cached = localStorage.getItem('fb_cache_'+path); if(cached) cb(JSON.parse(cached)); } catch(e){}
-    if(!window.ME || !window.ME.uid) return;
-    var uid = window.ME.uid;
-    var parts = path.split('/');
-    var ref = doc(db, 'users', uid, parts[0], parts[1]);
-    getDoc(ref).then(function(snap) {
-      if(snap.exists()) {
-        var data = snap.data();
-        try { localStorage.setItem('fb_cache_'+path, JSON.stringify(data)); } catch(e){}
-        cb(data);
-      }
-    }).catch(function(e){ console.warn('Load error:', path, e.message); });
-  };
+  // ── Load all user data from Firestore ──
+  async function loadAllUserData(uid) {
+    var paths = [
+      ['profile/data',           function(d){ if(d){ window.ME = d; window.ME.uid = uid; window.isPro = d.isPro||false; window.accounts=[d]; } }],
+      ['performance/history',    function(d){ if(d && d.history) window.quizHistory = d.history; }],
+      ['mock/history',           function(d){ if(d && d.history) window.mockHistory = d.history; }],
+      ['quiz/last_state',        function(d){ if(d) { window._lastQuizState = d; } }],
+      ['bookmarks/list',         function(d){ if(d && d.items) window.bookmarks = d.items; }],
+      ['referral/data',          function(d){ if(d) window.referralData = d; }],
+      ['settings/notifications', function(d){ if(d) window.notificationSettings = d; }],
+      ['settings/mock',          function(d){ if(d) window.mockSettings = d; }],
+      ['notifications/list',     function(d){ if(d && d.items) window.notifications = d.items; }],
+      ['chat/log',               function(d){ if(d && d.log) window.chatLog = d.log; }],
+    ];
+    for(var i=0; i<paths.length; i++) {
+      try {
+        var snap = await getDoc(userRef(uid, paths[i][0]));
+        paths[i][1](snap.exists() ? snap.data() : null);
+      } catch(e){ console.warn('Load error:', paths[i][0], e.message); }
+    }
+  }
 
   // ── Auth state listener ──
   onAuthStateChanged(auth, async function(user) {
     if(user) {
       try {
-        var profileRef = doc(db, 'users', user.uid, 'profile', 'data');
+        var profileRef = userRef(user.uid, 'profile/data');
         var snap = await getDoc(profileRef);
+
         if(snap.exists()) {
-          // Existing user — load profile from Firestore
-          var profile = snap.data();
-          profile.uid = user.uid;
-          window.ME = profile;
-          window.isPro = profile.isPro || false;
-          window.accounts = [profile];
-          if(window.loadPerformance) window.loadPerformance();
-          if(window.loadBookmarks) window.loadBookmarks();
-          if(window.loadMockHistory) window.loadMockHistory();
-          if(window.loadChat) window.loadChat();
-          if(window.loadReferral) window.loadReferral();
-          if(window.loadLastQuizState) window.loadLastQuizState();
+          // Returning user — load everything from Firestore
+          await loadAllUserData(user.uid);
+          if(window.updateContinueCard) window.updateContinueCard();
+          if(window.renderChat) window.renderChat();
           if(window.go) window.go('main');
-        } else if(window.ME && window.ME.uid === user.uid) {
-          // New user — profile was just created in memory by doVerify, save it to Firestore
+        } else if(window.ME && (window.ME.uid === user.uid || !window.ME.uid)) {
+          // Brand new user — save their profile (just created by doVerify)
+          window.ME.uid = user.uid;
+          window.ME.id = user.uid;
           var newProfile = {
             uid: user.uid, id: user.uid,
-            firstName: window.ME.firstName || '', lastName: window.ME.lastName || '',
-            name: window.ME.name || user.displayName || '',
-            username: window.ME.username || '', email: user.email || '',
-            phone: window.ME.phone || '', yearLevel: window.ME.yearLevel || '',
-            photo: window.ME.photo || null, isPro: false,
+            firstName: window.ME.firstName||'', lastName: window.ME.lastName||'',
+            name: window.ME.name || user.displayName||'',
+            username: window.ME.username||'', email: user.email||'',
+            phone: window.ME.phone||'', yearLevel: window.ME.yearLevel||'',
+            photo: window.ME.photo||null, isPro: false,
             totalAns: 0, totalCor: 0,
             joined: window.ME.joined || new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})
           };
@@ -8840,11 +8814,11 @@ go('splash');
           window.isPro = false;
           window.accounts = [newProfile];
         }
-      } catch(e) { console.error('Profile load error:', e); }
+      } catch(e) { console.error('Auth state error:', e); }
     }
   });
 
-  // ── Expose auth functions to existing JS ──
+  // ── Auth functions ──
   window._fbSignIn = async function(email, password) {
     return signInWithEmailAndPassword(auth, email, password);
   };
@@ -8855,16 +8829,14 @@ go('splash');
   };
   window._fbSignOut = async function() {
     await signOut(auth);
-    window.ME = null;
-    window.isPro = false;
+    window.ME = null; window.isPro = false;
+    window.quizHistory = []; window.mockHistory = [];
+    window.bookmarks = []; window.notifications = [];
     if(window.go) window.go('splash');
   };
   window._fbGetUid = function() { return auth.currentUser ? auth.currentUser.uid : null; };
-  window._fbSendPasswordReset = function(email) {
-    return sendPasswordResetEmail(auth, email);
-  };
+  window._fbSendPasswordReset = function(email) { return sendPasswordResetEmail(auth, email); };
 
-  // Override the logout button if it exists
   var logoutEl = document.getElementById('logout-btn-fb');
   if(logoutEl) logoutEl.addEventListener('click', function(){ window._fbSignOut(); });
 </script>
