@@ -2674,6 +2674,48 @@ function loadDarkMode() {
 
     <!-- UPLOAD TAB -->
     <div id="admtab-upload" style="display:none">
+
+      <!-- FIRESTORE SYNC STATUS CARD -->
+      <div class="adcard" id="sync-status-card" style="border:2px solid var(--g);background:rgba(10,110,78,.08)">
+        <div class="adtitle">☁️ Firestore Sync Status</div>
+        <div id="sync-status-msg" style="font-size:13px;color:var(--mt);margin-bottom:12px">
+          Checking Firestore…
+        </div>
+        <button class="btn btn-green" style="width:100%" onclick="forceSyncAllToFirestore()">
+          ☁️ Force Push All Questions to Firestore
+        </button>
+        <div id="sync-progress" style="display:none;margin-top:10px;font-size:12px;color:var(--g)"></div>
+        <div style="margin-top:8px;font-size:11px;color:var(--mt);line-height:1.5">
+          Use this if questions show on this device but not others. It pushes your full question bank to Firestore so all devices can load them.
+        </div>
+      </div>
+
+      <!-- FIRESTORE RULES REMINDER -->
+      <div class="adcard" style="border:2px solid #e67e22;background:rgba(230,126,34,.06)">
+        <div class="adtitle">🔐 Firestore Security Rules</div>
+        <div style="font-size:13px;color:var(--mt);margin-bottom:10px">
+          If questions still don't appear on other devices, your Firestore security rules may be blocking reads. 
+          Go to <strong>Firebase Console → Firestore → Rules</strong> and paste these rules:
+        </div>
+        <div style="background:#111;color:#7fff7f;font-family:monospace;font-size:11px;padding:12px;border-radius:8px;line-height:1.6;overflow-x:auto;white-space:pre">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global data (questions, mock banks) readable by all authenticated users
+    match /global/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    // User data only accessible by that user
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}</div>
+        <button class="btn" style="width:100%;margin-top:10px;background:#e67e22;color:#fff" onclick="copyFirestoreRules()">
+          📋 Copy Rules to Clipboard
+        </button>
+      </div>
+
       <div class="adcard">
         <div class="adtitle">📤 Import Questions</div>
         <div class="fg">
@@ -3714,7 +3756,7 @@ function loadNotifications() {
   _fbLoad('notifications/list', null, function(data){ if(data && data.items) notifications=data.items; });
 }
 function saveStreak() {
-  _fbSave('performance/history', {history: quizHistory}); // same as savePerformance
+  savePerformance(); // streak data is embedded in quizHistory — same Firestore write
 }
 function saveMockDB() {
   // MOCK_DB is the active question list (derived from active bank) — store globally
@@ -3819,6 +3861,7 @@ function switchAdminTab(name, el) {
   el.classList.add('on');
   if(name === 'students') updateAdminSt();
   if(name === 'codes') renderCodesTab();
+  if(name === 'upload') checkSyncStatus();
   if(name === 'view') renderAdminQView();
   if(name === 'mock') renderAdminMockTab();
   if(name === 'analytics') renderAdminAnalytics();
@@ -3900,6 +3943,127 @@ function generateCodes() {
   if(msg){
     msg.innerHTML = '<div class="al al-ok">✅ ' + qty + ' code' + (qty>1?'s':'') + ' generated! Valid for ' + days + ' days.</div>';
     setTimeout(function(){ msg.innerHTML=''; }, 3000);
+  }
+}
+
+// =========================================================
+// FIRESTORE SYNC — check status & force push
+// =========================================================
+var FIRESTORE_RULES = `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /global/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}`;
+
+function copyFirestoreRules() {
+  if(navigator.clipboard) {
+    navigator.clipboard.writeText(FIRESTORE_RULES).then(function(){ toast('✅ Rules copied to clipboard!'); });
+  } else {
+    prompt('Copy these rules:', FIRESTORE_RULES);
+  }
+}
+
+function checkSyncStatus() {
+  var msg = document.getElementById('sync-status-msg');
+  if(!msg) return;
+  if(!window._fbGetDoc) {
+    msg.innerHTML = '<span style="color:#e67e22">⚠ Firebase not ready yet. Please wait a moment and try again.</span>';
+    return;
+  }
+  msg.textContent = 'Checking Firestore…';
+  window._fbGetDoc('global/question_db').then(function(meta) {
+    var localYears = Object.keys(DB);
+    var localTotal = 0;
+    localYears.forEach(function(yr) {
+      Object.keys(DB[yr]||{}).forEach(function(p) { localTotal += (DB[yr][p]||[]).length; });
+    });
+
+    if(!meta || !meta.index) {
+      msg.innerHTML = '<span style="color:#e74c3c">❌ Firestore has NO questions yet.</span> You have <strong>' + localTotal + '</strong> questions on this device. Press the button below to push them.';
+    } else {
+      var fsYears = Object.keys(meta.index);
+      var fsPapers = 0;
+      fsYears.forEach(function(yr) { fsPapers += (meta.index[yr]||[]).length; });
+      var lastSync = meta.updatedAt ? new Date(meta.updatedAt).toLocaleString() : 'unknown';
+      msg.innerHTML = '<span style="color:var(--g)">✅ Firestore has data.</span> ' +
+        '<strong>' + fsYears.length + ' years</strong>, <strong>' + fsPapers + ' papers</strong> synced. ' +
+        'Last sync: <strong>' + lastSync + '</strong>. ' +
+        'This device has <strong>' + localTotal + '</strong> questions. ' +
+        'Press the button to push any new/updated questions.';
+    }
+  }).catch(function(e) {
+    msg.innerHTML = '<span style="color:#e74c3c">❌ Could not reach Firestore: ' + e.message + '</span>';
+  });
+}
+
+async function forceSyncAllToFirestore() {
+  var btn = event && event.target;
+  var progress = document.getElementById('sync-progress');
+  var msg = document.getElementById('sync-status-msg');
+  if(!window._fbSetDoc) {
+    if(msg) msg.innerHTML = '<span style="color:#e67e22">⚠ Firebase not ready. Wait a moment and try again.</span>';
+    return;
+  }
+  if(btn) { btn.disabled = true; btn.textContent = '⏳ Syncing…'; }
+  if(progress) { progress.style.display = 'block'; progress.textContent = 'Starting sync…'; }
+
+  var years = Object.keys(DB);
+  var totalPapers = 0;
+  years.forEach(function(yr) { totalPapers += Object.keys(DB[yr]||{}).length; });
+
+  if(totalPapers === 0) {
+    if(msg) msg.innerHTML = '<span style="color:#e67e22">⚠ No questions found on this device to push.</span>';
+    if(btn) { btn.disabled = false; btn.textContent = '☁️ Force Push All Questions to Firestore'; }
+    return;
+  }
+
+  var done = 0;
+  var errors = 0;
+  for(var yi = 0; yi < years.length; yi++) {
+    var yr = years[yi];
+    var papers = Object.keys(DB[yr]||{});
+    for(var pi = 0; pi < papers.length; pi++) {
+      var paper = papers[pi];
+      var key = yr + '_' + paper.replace(/\s+/g, '_');
+      var questions = (DB[yr][paper]||[]);
+      try {
+        await window._fbSetDoc('global/question_db/years/' + key, { yr: yr, paper: paper, questions: questions });
+        done++;
+        if(progress) progress.textContent = 'Synced ' + done + '/' + totalPapers + ' papers… (' + questions.length + ' questions in ' + yr + ' ' + paper + ')';
+      } catch(e) {
+        errors++;
+        console.warn('Sync error for ' + key + ':', e.message);
+      }
+    }
+  }
+
+  // Save index doc
+  var index = {};
+  years.forEach(function(yr) { index[yr] = Object.keys(DB[yr]||{}); });
+  try {
+    await window._fbSetDoc('global/question_db', { index: index, updatedAt: Date.now() });
+  } catch(e) { console.warn('Sync index error:', e.message); errors++; }
+
+  // Save custom years
+  if(window.customYears && window.customYears.length > 0) {
+    try { await window._fbSetDoc('global/custom_years', {years: customYears}); } catch(e){}
+  }
+
+  if(btn) { btn.disabled = false; btn.textContent = '☁️ Force Push All Questions to Firestore'; }
+  if(errors === 0) {
+    if(progress) progress.textContent = '✅ All ' + done + ' papers synced successfully!';
+    if(msg) msg.innerHTML = '<span style="color:var(--g)">✅ Sync complete!</span> ' + done + ' papers pushed to Firestore. All devices will now load these questions on next login.';
+    toast('✅ All questions synced to Firestore!');
+  } else {
+    if(progress) progress.textContent = '⚠ Synced ' + done + '/' + totalPapers + ' papers. ' + errors + ' error(s).';
+    toast('⚠ Sync had ' + errors + ' error(s). Check console.');
   }
 }
 
@@ -4168,7 +4332,7 @@ function confirmImport() {
   parsedQBuffer.forEach(function(q){ DB[yr][paper].push(q); });
   var count = parsedQBuffer.length;
   parsedQBuffer = [];
-  saveDB();
+  saveDBPaper(yr, paper); // targeted save — only this year/paper changed
   document.getElementById('qpaste').value = '';
   var answerPaste = document.getElementById('answer-paste');
   if(answerPaste) answerPaste.value = '';
@@ -4203,7 +4367,7 @@ function addQ() {
   if(!DB[yr]) DB[yr]={'Paper 1':[],'Paper 2':[],'OSCE':[]};
   if(!DB[yr][paper]) DB[yr][paper]=[];
   DB[yr][paper].push({q:q,o:[a,b,c,d],c:cor,e:e});
-  saveDB();
+  saveDBPaper(yr, paper); // targeted save — only this year/paper changed
   if(msg) msg.innerHTML='<div class="al al-ok">✅ Question added to '+yr+' '+paper+'!</div>';
   ['aq','aa','ab','ac','ad','aexp'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
   renderYGrid();
@@ -4578,7 +4742,7 @@ function confirmCSVImport() {
   csvParsedBuffer.forEach(function(q){ DB[yr][paper].push(q); });
   var count = csvParsedBuffer.length;
   csvParsedBuffer = [];
-  saveDB();
+  saveDBPaper(yr, paper); // targeted save — only this year/paper changed
   var previewArea = document.getElementById('csv-preview-area');
   if(previewArea) previewArea.style.display = 'none';
   var csvFile = document.getElementById('csv-file');
@@ -4714,13 +4878,13 @@ function renderMostFailed() {
     papers.forEach(function(paper){
       if(paperFilter !== 'all' && paper !== paperFilter) return;
       var qs = DB[yr][paper] || [];
-      qs.forEach(function(q, qi){ keys.push({ key: yr+'|'+paper+'|'+qi, q:q, yr:yr, paper:paper }); });
+      qs.forEach(function(q, qi){ keys.push({ key: yr+'_'+paper.replace(/\s+/g,'_')+'_'+qi, q:q, yr:yr, paper:paper }); });
     });
   });
   var loaded = 0;
   if(keys.length === 0) { el.innerHTML = '<p style="color:var(--mt);font-size:14px">No questions in database yet.</p>'; return; }
   keys.forEach(function(item){
-    var fbKey = 'qstats/'+item.key.replace(/\|/g,'_');
+    var fbKey = 'qstats/'+item.key; // key already has underscores
     _fbLoad(fbKey, null, function(stats){
       if(stats && stats.total > 0) {
         failMap[item.key] = { q:item.q, year:item.yr, paper:item.paper, wrong: stats.total - stats.correct, total: stats.total };
@@ -5567,8 +5731,7 @@ function pickAns(i) {
   QAnswers.push({ chosen: i, correct: q.c, q: q });
   // Track per-question stats — stored exclusively on Firestore
   try {
-    var qKey = 'np_qstat_'+QYear+'|'+QPaper+'|'+QI;
-    var fbKey = 'qstats/'+qKey.replace(/\|/g,'_');
+    var fbKey = 'qstats/'+QYear+'_'+QPaper.replace(/\s+/g,'_')+'_'+QI;
     _fbLoad(fbKey, {total:0,correct:0}, function(stat) {
       stat = stat || {total:0,correct:0};
       stat.total++;
@@ -5634,8 +5797,7 @@ function showResult() {
     date: new Date().toISOString()
   };
   quizHistory.push(quizData);
-  savePerformance();
-  saveStreak(); // Update streak data
+  savePerformance(); // saves quiz history + streak data
   
   // Update account stats
   if(ME){
@@ -6183,7 +6345,7 @@ function submitMockExam() {
   var rec={ date:new Date().toISOString(), name:ME?ME.name:'Student', score:correct, total:total, pct:pct, passed:passed, timeTaken:timeTaken, bankId:activeBank?activeBank.id:null, bankVersion:activeBank?activeBank.title:null };
   mockHistory.push(rec); saveMockHistory();
   // Save to general quiz history too
-  quizHistory.push({ year:'Mock', paper:'NMCN Mock', score:correct, total:total, percentage:pct, mode:'mock', date:rec.date }); savePerformance(); saveStreak();
+  quizHistory.push({ year:'Mock', paper:'NMCN Mock', score:correct, total:total, percentage:pct, mode:'mock', date:rec.date }); savePerformance(); // saves quiz history + streak data
   renderMockResult(correct, wrong, unanswered, pct, passed, timeTaken);
   go('mock-result');
 }
@@ -8329,12 +8491,13 @@ function selectReport(el, reason) {
 
 function submitReport() {
   if(!_reportChoice || !_reportQRef) return;
-  // Load existing reports from Firestore, append new one, save back
-  _fbLoad('admin/reports', null, function(existing) {
+  // Save to global/reports so admin can see all user reports from any account
+  if(!window._fbGetDoc || !window._fbSetDoc) { toast('⚠ Not connected. Try again.'); return; }
+  window._fbGetDoc('global/reports').then(function(existing) {
     var reports = (existing && existing.reports) ? existing.reports : [];
-    reports.push({ reason: _reportChoice, ref: _reportQRef, date: new Date().toISOString(), reporter: ME ? ME.name : 'Anonymous' });
-    _fbSave('admin/reports', {reports: reports});
-  });
+    reports.push({ reason: _reportChoice, ref: _reportQRef, date: new Date().toISOString(), uid: ME ? ME.uid : null, reporter: ME ? ME.name : 'Anonymous' });
+    window._fbSetDoc('global/reports', {reports: reports}).catch(function(e){ console.warn('Report save error:', e); });
+  }).catch(function(){ toast('⚠ Could not submit report. Please try again.'); });
   closeReportModal();
   toast('✅ Report submitted! Thank you for helping us improve.');
 }
@@ -8837,11 +9000,18 @@ go('splash');
   // Pure Firestore _fbLoad — reads directly from Firestore, no localStorage
   window._fbLoad = function(path, fallback, cb) {
     var uid = auth.currentUser ? auth.currentUser.uid : (window.ME && window.ME.uid);
-    if(!uid) { if(fallback !== null) cb(fallback); return; }
+    if(!uid) {
+      // Not logged in — call callback with fallback (even if null) so callers don't hang
+      if(typeof cb === 'function') cb(fallback);
+      return;
+    }
     var ref = userRef(uid, path);
     getDoc(ref).then(function(snap) {
-      cb(snap.exists() ? snap.data() : (fallback !== undefined ? fallback : null));
-    }).catch(function(e){ console.error('Firestore load error:', path, e.message); if(fallback !== null && typeof cb === 'function') cb(fallback); });
+      if(typeof cb === 'function') cb(snap.exists() ? snap.data() : fallback);
+    }).catch(function(e){
+      console.error('Firestore load error:', path, e.message);
+      if(typeof cb === 'function') cb(fallback);
+    });
   };
 
   // Flush any queued saves that happened before Firebase was ready
@@ -9010,6 +9180,19 @@ go('splash');
           window.ME = newProfile;
           window.isPro = false;
           window.accounts = [newProfile];
+          // New user — load global data (questions, mock banks) if not already loaded
+          if(!window._globalDataLoaded) {
+            await loadAllUserData(user.uid); // loads global data too
+          }
+          // Load per-session caches
+          if(window.loadAIUsage) window.loadAIUsage();
+          if(window.renderYGrid) window.renderYGrid();
+          if(window.updateHomeUI) window.updateHomeUI();
+          if(window.updateProfUI) window.updateProfUI();
+          if(window.updateMockHomeCard) window.updateMockHomeCard();
+          if(window.renderChat) window.renderChat();
+          if(window.updateContinueCard) window.updateContinueCard();
+          if(window.go) window.go('main');
         }
       } catch(e) { console.error('Auth state error:', e); }
     }
@@ -9069,6 +9252,79 @@ go('splash');
 
   var logoutEl = document.getElementById('logout-btn-fb');
   if(logoutEl) logoutEl.addEventListener('click', function(){ window._fbSignOut(); });
+
+  // ── Load global data immediately on Firebase init (no auth required) ──
+  // Questions, mock banks etc. should load for all users as soon as Firebase is ready,
+  // even before the user's own data is loaded.
+  (async function loadGlobalDataOnInit() {
+    try {
+      // Question DB index + all year/paper docs
+      var qMeta = await getDoc(doc(db, 'global', 'question_db'));
+      if(qMeta.exists() && qMeta.data().index) {
+        var qIndex = qMeta.data().index;
+        var qYears = Object.keys(qIndex);
+        if(qYears.length > 0) {
+          window.DB = window.DB || {};
+          for(var yi = 0; yi < qYears.length; yi++) {
+            var yr = qYears[yi];
+            window.DB[yr] = window.DB[yr] || {};
+            var papers = qIndex[yr] || [];
+            for(var pi = 0; pi < papers.length; pi++) {
+              var paper = papers[pi];
+              var key = yr + '_' + paper.replace(/\s+/g, '_');
+              try {
+                var pSnap = await getDoc(doc(db, 'global', 'question_db', 'years', key));
+                if(pSnap.exists() && pSnap.data().questions) {
+                  window.DB[yr][paper] = pSnap.data().questions;
+                }
+              } catch(pe) { console.warn('Global init: question_db paper error', key, pe.message); }
+            }
+          }
+          if(window.renderYGrid) window.renderYGrid();
+          if(window.updateHomeUI) window.updateHomeUI();
+        }
+      }
+    } catch(e) { console.warn('Global init: question_db error', e.message); }
+
+    try {
+      var cySnap = await getDoc(doc(db, 'global', 'custom_years'));
+      if(cySnap.exists() && cySnap.data().years) window.customYears = cySnap.data().years;
+    } catch(e) { console.warn('Global init: custom_years error', e.message); }
+
+    try {
+      var mbMeta = await getDoc(doc(db, 'global', 'mock_banks'));
+      if(mbMeta.exists() && mbMeta.data().index && mbMeta.data().index.length > 0) {
+        var mbIndex = mbMeta.data().index;
+        window.MOCK_BANKS = [];
+        for(var bi = 0; bi < mbIndex.length; bi++) {
+          var entry = mbIndex[bi];
+          try {
+            var bSnap = await getDoc(doc(db, 'global', 'mock_banks', 'banks', entry.id));
+            window.MOCK_BANKS.push(bSnap.exists() ? bSnap.data() : entry);
+          } catch(be) { window.MOCK_BANKS.push(entry); }
+        }
+      }
+    } catch(e) { console.warn('Global init: mock_banks error', e.message); }
+
+    try {
+      var msSnap = await getDoc(doc(db, 'global', 'mock_schedule'));
+      if(msSnap.exists()) window.mockSchedule = msSnap.data();
+    } catch(e) { console.warn('Global init: mock_schedule error', e.message); }
+
+    try {
+      var mdbSnap = await getDoc(doc(db, 'global', 'mock_db'));
+      if(mdbSnap.exists() && mdbSnap.data().questions) window.MOCK_DB = mdbSnap.data().questions;
+    } catch(e) { console.warn('Global init: mock_db error', e.message); }
+
+    try {
+      var codesSnap = await getDoc(doc(db, 'global', 'admin_codes'));
+      if(codesSnap.exists() && codesSnap.data().codes) window.generatedCodes = codesSnap.data().codes;
+    } catch(e) { console.warn('Global init: admin_codes error', e.message); }
+
+    window._globalDataLoaded = true;
+    if(window.renderYGrid) window.renderYGrid();
+    if(window.updateMockHomeCard) window.updateMockHomeCard();
+  })();
 </script>
 
 <!-- ========== AGORA CALL MODAL ========== -->
