@@ -1,1081 +1,1313 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ResearchGen — AI-Powered Academic Writing</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Mono:wght@300;400;500&family=Literata:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --ink: #0f0e0c;
-    --parchment: #f5f0e8;
-    --cream: #faf7f2;
-    --gold: #c9a84c;
-    --gold-light: #e8d5a3;
-    --rust: #8b3a2a;
-    --sage: #4a6741;
-    --muted: #7a7268;
-    --border: #d4c9b5;
-    --shadow: rgba(15,14,12,0.12);
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    background: var(--cream);
-    color: var(--ink);
-    font-family: 'Literata', Georgia, serif;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* Background texture */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: 
-      radial-gradient(ellipse at 20% 20%, rgba(201,168,76,0.06) 0%, transparent 50%),
-      radial-gradient(ellipse at 80% 80%, rgba(139,58,42,0.05) 0%, transparent 50%),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23f5f0e8'/%3E%3Ccircle cx='1' cy='1' r='0.4' fill='%23d4c9b5' opacity='0.4'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  /* Header */
-  header {
-    position: relative;
-    z-index: 10;
-    border-bottom: 2px solid var(--gold);
-    padding: 0 60px;
-    background: var(--ink);
-  }
-
-  .header-inner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 72px;
-  }
-
-  .logo {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.6rem;
-    font-weight: 900;
-    color: var(--parchment);
-    letter-spacing: -0.02em;
-  }
-
-  .logo span { color: var(--gold); }
-
-  .header-tag {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.65rem;
-    color: var(--muted);
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    border: 1px solid #2a2720;
-    padding: 4px 10px;
-    border-radius: 2px;
-  }
-
-  /* Hero */
-  .hero {
-    position: relative;
-    z-index: 1;
-    text-align: center;
-    padding: 80px 60px 60px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .hero-eyebrow {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.65rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--gold);
-    margin-bottom: 20px;
-  }
-
-  .hero h1 {
-    font-family: 'Playfair Display', serif;
-    font-size: clamp(2.4rem, 5vw, 4rem);
-    font-weight: 900;
-    line-height: 1.1;
-    color: var(--ink);
-    max-width: 760px;
-    margin: 0 auto 24px;
-  }
-
-  .hero h1 em {
-    font-style: italic;
-    color: var(--rust);
-  }
-
-  .hero p {
-    font-size: 1.05rem;
-    color: var(--muted);
-    max-width: 560px;
-    margin: 0 auto;
-    line-height: 1.7;
-    font-style: italic;
-  }
-
-  /* Main layout */
-  .main {
-    position: relative;
-    z-index: 1;
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 60px 40px;
-    display: grid;
-    grid-template-columns: 1fr 360px;
-    gap: 48px;
-    align-items: start;
-  }
-
-  /* Input panel */
-  .input-panel {
-    background: white;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    box-shadow: 0 2px 20px var(--shadow);
-    overflow: hidden;
-  }
-
-  .panel-header {
-    background: var(--ink);
-    padding: 20px 28px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .panel-number {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--gold);
-    background: rgba(201,168,76,0.15);
-    border: 1px solid rgba(201,168,76,0.3);
-    width: 28px; height: 28px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-  }
-
-  .panel-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 1rem;
-    color: var(--parchment);
-    font-weight: 700;
-  }
-
-  .panel-body { padding: 28px; }
-
-  .field-group { margin-bottom: 24px; }
-
-  .field-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--muted);
-    margin-bottom: 8px;
-    display: block;
-  }
-
-  .field-input,
-  .field-textarea,
-  .field-select {
-    width: 100%;
-    background: var(--cream);
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    padding: 12px 14px;
-    font-family: 'Literata', serif;
-    font-size: 0.95rem;
-    color: var(--ink);
-    transition: border-color 0.2s, box-shadow 0.2s;
-    outline: none;
-  }
-
-  .field-input:focus,
-  .field-textarea:focus,
-  .field-select:focus {
-    border-color: var(--gold);
-    box-shadow: 0 0 0 3px rgba(201,168,76,0.12);
-  }
-
-  .field-textarea {
-    min-height: 100px;
-    resize: vertical;
-    line-height: 1.6;
-  }
-
-  .field-select { cursor: pointer; appearance: none; }
-
-  .select-wrap { position: relative; }
-  .select-wrap::after {
-    content: '▾';
-    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-    color: var(--muted); pointer-events: none; font-size: 0.8rem;
-  }
-
-  .sections-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-
-  .section-check {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    padding: 8px 10px;
-    border-radius: 3px;
-    border: 1px solid var(--border);
-    transition: background 0.15s, border-color 0.15s;
-    user-select: none;
-  }
-
-  .section-check:hover { background: var(--parchment); border-color: var(--gold-light); }
-  .section-check input { accent-color: var(--gold); width: 14px; height: 14px; }
-  .section-check span { font-size: 0.82rem; color: var(--ink); line-height: 1.3; }
-
-  .btn-generate {
-    width: 100%;
-    padding: 16px;
-    background: var(--ink);
-    color: var(--parchment);
-    border: none;
-    border-radius: 3px;
-    font-family: 'Playfair Display', serif;
-    font-size: 1rem;
-    font-weight: 700;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    transition: background 0.2s, transform 0.1s;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .btn-generate:hover { background: #1e1c18; }
-  .btn-generate:active { transform: scale(0.99); }
-
-  .btn-generate::before {
-    content: '';
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--gold), var(--rust), var(--gold));
-  }
-
-  .btn-generate .spinner {
-    width: 16px; height: 16px;
-    border: 2px solid rgba(255,255,255,0.3);
-    border-top-color: white;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    display: none;
-  }
-
-  .btn-generate.loading .spinner { display: block; }
-  .btn-generate.loading .btn-text { opacity: 0.6; }
-
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* Output area */
-  .output-area { position: relative; }
-
-  .output-placeholder {
-    background: white;
-    border: 2px dashed var(--border);
-    border-radius: 4px;
-    padding: 80px 40px;
-    text-align: center;
-  }
-
-  .placeholder-icon {
-    font-size: 3rem;
-    margin-bottom: 20px;
-    opacity: 0.3;
-  }
-
-  .placeholder-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.3rem;
-    color: var(--muted);
-    margin-bottom: 8px;
-    font-style: italic;
-  }
-
-  .placeholder-sub {
-    font-size: 0.85rem;
-    color: var(--border);
-    font-family: 'DM Mono', monospace;
-    letter-spacing: 0.05em;
-  }
-
-  /* Document output */
-  #output-document {
-    display: none;
-    background: white;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    box-shadow: 0 4px 30px var(--shadow);
-    overflow: hidden;
-  }
-
-  .doc-toolbar {
-    background: var(--ink);
-    padding: 14px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 2px solid var(--gold);
-  }
-
-  .doc-toolbar-left {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.65rem;
-    color: var(--muted);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
-
-  .doc-actions { display: flex; gap: 8px; }
-
-  .btn-action {
-    padding: 6px 14px;
-    border-radius: 2px;
-    font-family: 'DM Mono', monospace;
-    font-size: 0.65rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    cursor: pointer;
-    border: 1px solid;
-    transition: all 0.15s;
-  }
-
-  .btn-copy {
-    background: transparent;
-    border-color: #3a3830;
-    color: var(--muted);
-  }
-  .btn-copy:hover { border-color: var(--gold); color: var(--gold); }
-
-  .btn-print {
-    background: var(--gold);
-    border-color: var(--gold);
-    color: var(--ink);
-    font-weight: 500;
-  }
-  .btn-print:hover { background: var(--gold-light); }
-
-  .doc-content {
-    padding: 56px 64px;
-    line-height: 1.8;
-    max-height: 80vh;
-    overflow-y: auto;
-  }
-
-  .doc-content h1 {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.4rem;
-    font-weight: 900;
-    text-align: center;
-    margin-bottom: 40px;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: var(--ink);
-    padding-bottom: 16px;
-    border-bottom: 2px solid var(--gold);
-  }
-
-  .doc-content h2 {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.1rem;
-    font-weight: 700;
-    margin-top: 36px;
-    margin-bottom: 14px;
-    color: var(--ink);
-  }
-
-  .doc-content h3 {
-    font-family: 'Playfair Display', serif;
-    font-size: 1rem;
-    font-weight: 700;
-    font-style: italic;
-    margin-top: 24px;
-    margin-bottom: 10px;
-    color: var(--rust);
-  }
-
-  .doc-content p {
-    margin-bottom: 16px;
-    font-size: 0.95rem;
-    color: #1a1810;
-    text-align: justify;
-  }
-
-  .doc-content ol {
-    margin: 12px 0 16px 24px;
-  }
-
-  .doc-content ol li {
-    font-size: 0.95rem;
-    margin-bottom: 8px;
-    color: #1a1810;
-  }
-
-  .references-section {
-    margin-top: 40px;
-    padding-top: 24px;
-    border-top: 1px solid var(--border);
-  }
-
-  .references-section h2 {
-    margin-top: 0;
-  }
-
-  .ref-item {
-    font-size: 0.88rem;
-    margin-bottom: 12px;
-    padding-left: 32px;
-    text-indent: -32px;
-    color: #2a2720;
-    line-height: 1.6;
-  }
-
-  /* Loading overlay */
-  .loading-overlay {
-    display: none;
-    position: absolute;
-    inset: 0;
-    background: rgba(245,240,232,0.92);
-    backdrop-filter: blur(4px);
-    border-radius: 4px;
-    z-index: 50;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 24px;
-  }
-
-  .loading-overlay.active { display: flex; }
-
-  .loading-animation {
-    display: flex;
-    gap: 6px;
-  }
-
-  .loading-dot {
-    width: 10px; height: 10px;
-    background: var(--gold);
-    border-radius: 50%;
-    animation: bounce 1.2s ease-in-out infinite;
-  }
-
-  .loading-dot:nth-child(2) { animation-delay: 0.15s; background: var(--rust); }
-  .loading-dot:nth-child(3) { animation-delay: 0.3s; }
-
-  @keyframes bounce {
-    0%, 80%, 100% { transform: scale(0.7); opacity: 0.5; }
-    40% { transform: scale(1.2); opacity: 1; }
-  }
-
-  .loading-text {
-    font-family: 'Playfair Display', serif;
-    font-size: 1rem;
-    color: var(--ink);
-    font-style: italic;
-    text-align: center;
-  }
-
-  .loading-sub {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.65rem;
-    color: var(--muted);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    text-align: center;
-  }
-
-  .progress-bar-wrap {
-    width: 200px;
-    height: 3px;
-    background: var(--border);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-
-  .progress-bar {
-    height: 100%;
-    background: linear-gradient(90deg, var(--gold), var(--rust));
-    border-radius: 2px;
-    animation: progress 3s ease-in-out infinite;
-  }
-
-  @keyframes progress {
-    0% { width: 0%; }
-    50% { width: 70%; }
-    100% { width: 95%; }
-  }
-
-  /* Sidebar info */
-  .sidebar { display: flex; flex-direction: column; gap: 20px; }
-
-  .info-card {
-    background: white;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-
-  .info-card-header {
-    padding: 14px 20px;
-    background: var(--parchment);
-    border-bottom: 1px solid var(--border);
-    font-family: 'DM Mono', monospace;
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--muted);
-  }
-
-  .info-card-body { padding: 16px 20px; }
-
-  .feature-list { list-style: none; }
-  .feature-list li {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--parchment);
-    font-size: 0.88rem;
-    color: var(--ink);
-    line-height: 1.5;
-  }
-  .feature-list li:last-child { border-bottom: none; }
-  .feature-list li::before {
-    content: '✦';
-    color: var(--gold);
-    font-size: 0.65rem;
-    margin-top: 3px;
-    flex-shrink: 0;
-  }
-
-  .tip-text {
-    font-size: 0.85rem;
-    line-height: 1.6;
-    color: var(--muted);
-    font-style: italic;
-  }
-
-  /* Error state */
-  .error-msg {
-    background: #fef2f0;
-    border: 1px solid #f5c5bb;
-    border-radius: 3px;
-    padding: 12px 16px;
-    font-size: 0.85rem;
-    color: var(--rust);
-    margin-top: 16px;
-    display: none;
-  }
-
-  /* Footer */
-  footer {
-    position: relative;
-    z-index: 1;
-    border-top: 1px solid var(--border);
-    padding: 24px 60px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 40px;
-  }
-
-  footer p {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.62rem;
-    color: var(--border);
-    letter-spacing: 0.08em;
-  }
-
-  /* Print styles */
-  @media print {
-    header, footer, .input-panel, .sidebar, .doc-toolbar { display: none !important; }
-    .main { display: block; padding: 0; max-width: 100%; }
-    #output-document { display: block !important; border: none !important; box-shadow: none !important; }
-    .doc-content { max-height: none; padding: 0; }
-  }
-
-  @media (max-width: 900px) {
-    .main { grid-template-columns: 1fr; }
-    .sidebar { display: none; }
-    header, footer { padding: 0 24px; }
-    .hero { padding: 48px 24px 40px; }
-    .main { padding: 32px 20px; }
-    .doc-content { padding: 32px 24px; }
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NurseCare AI — Care Plan Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --teal: #4a9ba8;
+      --teal-dark: #2d7a87;
+      --teal-light: #7ec8d4;
+      --sage: #6b8f71;
+      --sage-light: #a8c4ac;
+      --wood: #8b6347;
+      --cream: #f7f3ee;
+      --cream-dark: #ede7dc;
+      --white-glass: rgba(255,255,255,0.82);
+      --white-glass2: rgba(255,255,255,0.65);
+      --white-glass3: rgba(255,255,255,0.45);
+      --border-light: rgba(255,255,255,0.6);
+      --border-mid: rgba(74,155,168,0.25);
+      --text-dark: #1e2d2f;
+      --text-mid: #3d5a5f;
+      --text-muted: #7a9ea4;
+      --amber: #d4912a;
+      --red: #c0544b;
+      --green: #4a8c5a;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      background: #2c5f6a;
+      color: var(--text-dark);
+      position: relative;
+    }
+
+    /* BACKGROUND SCENE */
+    .bg-scene {
+      position: fixed;
+      inset: 0;
+      background-image: url('https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?w=1600&q=80');
+      background-size: cover;
+      background-position: center;
+      z-index: 0;
+    }
+
+    /* Use the uploaded image via inline base64 fallback approach — we'll set it via JS */
+    .bg-overlay {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(30, 70, 80, 0.55) 0%,
+        rgba(20, 55, 65, 0.35) 40%,
+        rgba(15, 45, 55, 0.50) 100%
+      );
+      z-index: 1;
+    }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); }
+    ::-webkit-scrollbar-thumb { background: var(--teal-light); border-radius: 3px; }
+
+    /* ── HEADER ── */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--white-glass);
+      backdrop-filter: blur(20px) saturate(1.4);
+      border-bottom: 1px solid var(--border-light);
+      padding: 14px 40px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 24px rgba(0,0,0,0.08);
+    }
+
+    .logo { display: flex; align-items: center; gap: 14px; }
+    .logo-icon {
+      width: 42px; height: 42px; border-radius: 12px;
+      background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 4px 16px rgba(74,155,168,0.35);
+    }
+    .logo-text { line-height: 1.2; }
+    .logo-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 21px; font-weight: 700;
+      color: var(--text-dark); letter-spacing: -0.3px;
+    }
+    .logo-sub {
+      font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase;
+      color: var(--text-muted); font-family: 'Fira Code', monospace;
+    }
+
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .badge {
+      background: rgba(74,140,90,0.1); color: var(--sage);
+      border: 1px solid rgba(74,140,90,0.25);
+      border-radius: 20px; padding: 5px 13px;
+      font-size: 11px; font-family: 'Fira Code', monospace; font-weight: 500;
+    }
+
+    #print-btn {
+      display: none;
+      background: rgba(74,155,168,0.12); color: var(--teal-dark);
+      border: 1px solid rgba(74,155,168,0.3);
+      border-radius: 8px; padding: 7px 16px;
+      font-size: 12px; font-family: 'Fira Code', monospace;
+      cursor: pointer; transition: all 0.2s;
+    }
+    #print-btn:hover { background: rgba(74,155,168,0.22); }
+
+    /* ── MAIN ── */
+    main {
+      position: relative; z-index: 10;
+      max-width: 960px; margin: 0 auto; padding: 60px 24px 100px;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      text-align: center; margin-bottom: 52px;
+      animation: fadeUp 0.7s ease both;
+    }
+
+    .hero-eyebrow {
+      display: inline-block;
+      font-family: 'Fira Code', monospace;
+      font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+      color: var(--teal-light);
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 20px; padding: 5px 16px;
+      margin-bottom: 18px;
+    }
+
+    .hero h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(34px, 6vw, 60px);
+      font-weight: 600; font-style: italic;
+      color: #fff;
+      text-shadow: 0 2px 20px rgba(0,0,0,0.3);
+      letter-spacing: -1px; margin-bottom: 12px;
+      line-height: 1.1;
+    }
+
+    .hero p {
+      color: rgba(255,255,255,0.75);
+      font-size: 15px; font-weight: 300;
+      margin-bottom: 38px;
+      letter-spacing: 0.2px;
+    }
+
+    /* ── SEARCH BOX ── */
+    .search-wrap { position: relative; max-width: 600px; margin: 0 auto; }
+    .search-box {
+      display: flex; align-items: center;
+      background: var(--white-glass);
+      border: 1.5px solid var(--border-light);
+      border-radius: 18px; padding: 5px 5px 5px 20px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.18), 0 0 0 1px rgba(255,255,255,0.4);
+      backdrop-filter: blur(20px);
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .search-box:focus-within {
+      border-color: var(--teal);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.18), 0 0 0 3px rgba(74,155,168,0.2);
+    }
+    .search-icon { font-size: 16px; opacity: 0.5; margin-right: 10px; flex-shrink: 0; }
+    #diagnosis-input {
+      flex: 1; background: transparent; border: none;
+      color: var(--text-dark); font-size: 15px; font-family: 'Outfit', sans-serif;
+      padding: 13px 0;
+    }
+    #diagnosis-input:focus { outline: none; }
+    #diagnosis-input::placeholder { color: var(--text-muted); }
+
+    #generate-btn {
+      background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+      border: none; border-radius: 13px; color: #fff;
+      padding: 12px 22px; font-size: 14px; font-weight: 600;
+      font-family: 'Outfit', sans-serif;
+      cursor: pointer; white-space: nowrap;
+      transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+      display: none;
+      box-shadow: 0 4px 16px rgba(74,155,168,0.4);
+    }
+    #generate-btn:hover {
+      opacity: 0.9; transform: scale(0.98);
+      box-shadow: 0 2px 8px rgba(74,155,168,0.3);
+    }
+
+    /* ── DROPDOWN ── */
+    #suggestions {
+      display: none; position: absolute;
+      top: calc(100% + 8px); left: 0; right: 0;
+      background: var(--white-glass);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border-light);
+      border-radius: 14px; overflow: hidden; z-index: 50;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .suggestion-item {
+      display: block; width: 100%; text-align: left;
+      background: transparent; border: none;
+      border-bottom: 1px solid rgba(74,155,168,0.1);
+      color: var(--text-mid); padding: 12px 20px;
+      font-size: 14px; font-family: 'Outfit', sans-serif;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .suggestion-item:last-child { border-bottom: none; }
+    .suggestion-item:hover { background: rgba(74,155,168,0.1); color: var(--teal-dark); }
+    .suggestion-dot { color: var(--teal); margin-right: 10px; }
+
+    /* ── QUICK CHIPS ── */
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 18px; }
+    .chip {
+      background: var(--white-glass3);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.35);
+      border-radius: 20px; color: rgba(255,255,255,0.9);
+      padding: 7px 16px; font-size: 12px; font-weight: 400;
+      cursor: pointer; transition: all 0.2s; font-family: 'Outfit', sans-serif;
+    }
+    .chip:hover {
+      background: rgba(255,255,255,0.85);
+      color: var(--teal-dark);
+      border-color: rgba(255,255,255,0.7);
+    }
+
+    /* ── LOADER ── */
+    #loader { display: none; text-align: center; padding: 60px 0; }
+    .spinner {
+      width: 44px; height: 44px;
+      border: 3px solid rgba(255,255,255,0.2);
+      border-top-color: var(--teal-light);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      margin: 0 auto 16px;
+    }
+    #loader p { color: rgba(255,255,255,0.7); font-size: 14px; }
+
+    /* ── EMPTY STATE ── */
+    #empty-state {
+      text-align: center; padding: 48px 0;
+      background: var(--white-glass3);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 20px;
+    }
+    #empty-state .empty-icon { font-size: 56px; margin-bottom: 14px; }
+    #empty-state p { color: rgba(255,255,255,0.7); font-size: 14px; }
+
+    /* ── CARE PLAN OUTPUT ── */
+    #care-plan { display: none; }
+
+    /* Diagnosis banner */
+    .dx-banner {
+      background: var(--white-glass);
+      backdrop-filter: blur(24px) saturate(1.3);
+      border: 1.5px solid var(--border-light);
+      border-radius: 20px; padding: 28px 32px;
+      margin-bottom: 20px;
+      display: flex; justify-content: space-between; align-items: flex-start;
+      flex-wrap: wrap; gap: 16px;
+      animation: fadeUp 0.4s ease both;
+      box-shadow: 0 4px 32px rgba(0,0,0,0.1);
+      border-left: 4px solid var(--teal);
+    }
+    .dx-label {
+      font-size: 10px; font-family: 'Fira Code', monospace;
+      color: var(--teal); letter-spacing: 2.5px;
+      text-transform: uppercase; margin-bottom: 8px;
+    }
+    .dx-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(22px, 4vw, 32px); font-weight: 700;
+      color: var(--text-dark); margin-bottom: 6px;
+    }
+    .dx-related { color: var(--text-muted); font-size: 14px; }
+    .dx-related span { color: var(--text-mid); }
+    .priority-badge {
+      border-radius: 8px; padding: 6px 14px;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 2px; font-family: 'Fira Code', monospace;
+      white-space: nowrap; align-self: flex-start;
+    }
+    .priority-high { background: rgba(192,84,75,0.1); color: var(--red); border: 1px solid rgba(192,84,75,0.25); }
+    .priority-medium { background: rgba(212,145,42,0.1); color: var(--amber); border: 1px solid rgba(212,145,42,0.25); }
+    .priority-low { background: rgba(74,140,90,0.1); color: var(--green); border: 1px solid rgba(74,140,90,0.25); }
+
+    /* Section cards */
+    .cards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    @media (max-width: 640px) { .cards-grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--white-glass);
+      backdrop-filter: blur(20px) saturate(1.2);
+      border: 1px solid var(--border-light);
+      border-radius: 16px; padding: 22px;
+      animation: fadeUp 0.5s ease both;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+    }
+    .card:nth-child(1) { animation-delay: 0.05s; }
+    .card:nth-child(2) { animation-delay: 0.1s; }
+    .card-full { animation-delay: 0.15s !important; }
+    .card-eval { animation-delay: 0.2s !important; }
+
+    .card-header {
+      display: flex; align-items: center; gap: 9px;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(74,155,168,0.15);
+    }
+    .card-icon { font-size: 18px; }
+    .card-title {
+      font-size: 10px; font-weight: 600; letter-spacing: 2.5px;
+      text-transform: uppercase; color: var(--text-muted);
+      font-family: 'Fira Code', monospace;
+    }
+
+    /* Evidence list */
+    .evidence-list { list-style: none; }
+    .evidence-item {
+      display: flex; align-items: flex-start; gap: 8px;
+      color: var(--text-mid); font-size: 14px;
+      padding: 7px 0; border-bottom: 1px solid rgba(74,155,168,0.08);
+      line-height: 1.5;
+    }
+    .evidence-item:last-child { border-bottom: none; }
+    .evidence-arrow { color: var(--teal); flex-shrink: 0; margin-top: 2px; font-size: 11px; }
+
+    /* Goals */
+    .goal-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(74,155,168,0.08); }
+    .goal-item:last-child { border-bottom: none; }
+    .goal-num {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: rgba(74,140,90,0.15); color: var(--green);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; flex-shrink: 0;
+      font-family: 'Fira Code', monospace;
+    }
+    .goal-text { color: var(--text-mid); font-size: 14px; line-height: 1.55; }
+
+    /* Interventions */
+    .interventions-grid { display: grid; gap: 12px; }
+    .intervention-row {
+      background: rgba(247,243,238,0.6);
+      border: 1px solid rgba(74,155,168,0.15);
+      border-radius: 12px; padding: 16px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    }
+    @media (max-width: 580px) { .intervention-row { grid-template-columns: 1fr; } }
+    .int-label {
+      font-size: 10px; font-family: 'Fira Code', monospace;
+      letter-spacing: 1.5px; text-transform: uppercase;
+      margin-bottom: 7px;
+    }
+    .int-action-label { color: var(--teal-dark); }
+    .int-rationale-label { color: var(--amber); }
+    .int-action { color: var(--text-dark); font-size: 14px; line-height: 1.55; }
+    .int-rationale { color: var(--text-muted); font-size: 13px; line-height: 1.55; font-style: italic; }
+    .int-divider { border-left: 1px solid rgba(74,155,168,0.18); padding-left: 16px; }
+
+    /* Evaluation */
+    .card-eval {
+      border-left: 3px solid var(--sage);
+    }
+    .eval-box {
+      background: rgba(107,143,113,0.08);
+      border: 1px solid rgba(107,143,113,0.2);
+      border-radius: 10px; padding: 18px;
+    }
+    .eval-text { color: var(--text-mid); font-size: 15px; line-height: 1.65; }
+
+    /* Footer note */
+    .plan-footer {
+      text-align: center; margin-top: 32px;
+      color: rgba(255,255,255,0.4); font-size: 12px;
+      font-family: 'Fira Code', monospace;
+    }
+
+    /* ── PRINT TABLE (hidden on screen) ── */
+    #print-header, #print-table { display: none; }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+
+    /* ── AUTH MODAL ── */
+    .auth-overlay {
+      display: none; position: fixed; inset: 0; z-index: 999;
+      background: rgba(20,45,55,0.7); backdrop-filter: blur(8px);
+      align-items: center; justify-content: center;
+    }
+    .auth-overlay.active { display: flex; }
+    .auth-modal {
+      background: var(--white-glass);
+      backdrop-filter: blur(24px) saturate(1.4);
+      border: 1.5px solid var(--border-light);
+      border-radius: 24px; padding: 40px 36px;
+      width: 100%; max-width: 420px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.25);
+      animation: fadeUp 0.4s ease both;
+    }
+    .auth-modal h2 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 26px; font-weight: 700;
+      color: var(--text-dark); margin-bottom: 6px;
+    }
+    .auth-modal p { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; }
+    .auth-field { margin-bottom: 14px; }
+    .auth-field label {
+      display: block; font-size: 12px; font-weight: 600;
+      font-family: 'Fira Code', monospace; color: var(--text-mid);
+      letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px;
+    }
+    .auth-field input {
+      width: 100%; padding: 11px 14px;
+      border: 1.5px solid rgba(74,155,168,0.25);
+      border-radius: 10px; font-size: 14px;
+      font-family: 'Outfit', sans-serif;
+      color: var(--text-dark); background: rgba(255,255,255,0.8);
+      transition: border-color 0.2s;
+    }
+    .auth-field input:focus { outline: none; border-color: var(--teal); }
+    .auth-btn {
+      width: 100%; padding: 13px;
+      background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+      color: #fff; border: none; border-radius: 12px;
+      font-size: 15px; font-weight: 600; font-family: 'Outfit', sans-serif;
+      cursor: pointer; margin-top: 6px;
+      box-shadow: 0 4px 16px rgba(74,155,168,0.4);
+      transition: opacity 0.2s;
+    }
+    .auth-btn:hover { opacity: 0.9; }
+    .auth-switch {
+      text-align: center; margin-top: 16px;
+      font-size: 13px; color: var(--text-muted);
+    }
+    .auth-switch a { color: var(--teal-dark); cursor: pointer; font-weight: 600; }
+    .auth-error {
+      background: rgba(192,84,75,0.1); border: 1px solid rgba(192,84,75,0.25);
+      color: var(--red); border-radius: 8px; padding: 10px 14px;
+      font-size: 13px; margin-bottom: 14px; display: none;
+    }
+
+    /* ── SAVED PLANS PANEL ── */
+    .saved-panel {
+      display: none; position: fixed;
+      top: 0; right: 0; bottom: 0;
+      width: 320px; z-index: 200;
+      background: var(--white-glass);
+      backdrop-filter: blur(24px);
+      border-left: 1px solid var(--border-light);
+      box-shadow: -8px 0 40px rgba(0,0,0,0.15);
+      overflow-y: auto; padding: 24px 20px;
+    }
+    .saved-panel.open { display: block; }
+    .saved-panel h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 20px; font-weight: 700;
+      color: var(--text-dark); margin-bottom: 4px;
+    }
+    .saved-panel .panel-sub {
+      font-size: 11px; color: var(--text-muted);
+      font-family: 'Fira Code', monospace;
+      margin-bottom: 20px; letter-spacing: 1px;
+    }
+    .saved-item {
+      background: rgba(255,255,255,0.7);
+      border: 1px solid rgba(74,155,168,0.2);
+      border-radius: 12px; padding: 14px 16px;
+      margin-bottom: 10px; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .saved-item:hover { border-color: var(--teal); background: rgba(255,255,255,0.9); }
+    .saved-item-title {
+      font-weight: 600; color: var(--text-dark);
+      font-size: 14px; margin-bottom: 4px;
+    }
+    .saved-item-date {
+      font-size: 11px; color: var(--text-muted);
+      font-family: 'Fira Code', monospace;
+    }
+    .saved-item-del {
+      float: right; background: none; border: none;
+      color: var(--red); cursor: pointer; font-size: 16px;
+      padding: 0; line-height: 1;
+    }
+    .panel-close {
+      float: right; background: none; border: none;
+      font-size: 20px; cursor: pointer; color: var(--text-muted);
+      margin-top: -4px;
+    }
+    .no-saved {
+      text-align: center; padding: 40px 0;
+      color: var(--text-muted); font-size: 14px;
+    }
+    .no-saved div { font-size: 36px; margin-bottom: 12px; }
+
+    /* ── USER BAR ── */
+    .user-bar {
+      display: none; align-items: center; gap: 10px;
+    }
+    .user-bar.visible { display: flex; }
+    .user-name {
+      font-size: 13px; color: var(--text-mid);
+      font-family: 'Fira Code', monospace; font-weight: 500;
+    }
+    .user-btn {
+      background: rgba(74,155,168,0.12); color: var(--teal-dark);
+      border: 1px solid rgba(74,155,168,0.3);
+      border-radius: 8px; padding: 6px 14px;
+      font-size: 12px; font-family: 'Fira Code', monospace;
+      cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    }
+    .user-btn:hover { background: rgba(74,155,168,0.22); }
+    #login-btn {
+      background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+      color: #fff; border: none; border-radius: 8px;
+      padding: 7px 16px; font-size: 12px;
+      font-family: 'Fira Code', monospace; cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    #login-btn:hover { opacity: 0.88; }
+
+    /* Save button on care plan */
+    #save-plan-btn {
+      display: none;
+      background: rgba(74,140,90,0.12); color: var(--green);
+      border: 1px solid rgba(74,140,90,0.3);
+      border-radius: 8px; padding: 7px 16px;
+      font-size: 12px; font-family: 'Fira Code', monospace;
+      cursor: pointer; transition: all 0.2s;
+    }
+    #save-plan-btn:hover { background: rgba(74,140,90,0.22); }
+    .save-toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+      background: var(--text-dark); color: #fff;
+      padding: 10px 22px; border-radius: 30px;
+      font-size: 13px; font-family: 'Fira Code', monospace;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s;
+      z-index: 999;
+    }
+    .save-toast.show { opacity: 1; }
+
+    /* ── PRINT ── */
+    @media print {
+      @page { size: A4 landscape; margin: 15mm; }
+      header, .chips, .search-wrap, #empty-state, #loader,
+      .hero, #generate-btn, #print-btn, .plan-footer,
+      .bg-scene, .bg-overlay { display: none !important; }
+      body { background: #fff !important; color: #000 !important; }
+      #care-plan { display: block !important; }
+      .cards-grid, .card, .card-full, .card-eval,
+      .dx-banner { display: none !important; }
+      #print-header { display: block !important; }
+      #print-table { display: table !important; }
+    }
+  </style>
 </head>
 <body>
 
+<!-- BACKGROUND -->
+<div class="bg-scene" id="bgScene"></div>
+<div class="bg-overlay"></div>
+
+<!-- HEADER -->
 <header>
-  <div class="header-inner">
-    <div class="logo">Research<span>Gen</span></div>
-    <div class="header-tag">AI Academic Writing System v1.0</div>
+  <div class="logo">
+    <div class="logo-icon">🏥</div>
+    <div class="logo-text">
+      <div class="logo-title">NurseCare AI</div>
+      <div class="logo-sub">Clinical Care Plan Generator</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="badge">● NANDA-I Compliant</span>
+    <button id="save-plan-btn">💾 Save Plan</button>
+    <button id="print-btn" onclick="window.print()">⎙ Print Plan</button>
+    <div class="user-bar" id="user-bar">
+      <span class="user-name" id="user-name-display"></span>
+      <button class="user-btn" id="my-plans-btn">📂 My Plans</button>
+      <button class="user-btn" id="logout-btn">Sign Out</button>
+    </div>
+    <button id="login-btn">🔒 Sign In</button>
   </div>
 </header>
 
-<div class="hero">
-  <p class="hero-eyebrow">Powered by Claude AI · Academic-Grade Output</p>
-  <h1>Auto-Generate <em>Chapter One</em> for Your Research Project</h1>
-  <p>Enter your research topic and study context. The system will generate a complete, properly cited Chapter One with verifiable references from 2021 onward.</p>
-</div>
-
-<div class="main">
-  <!-- Input Panel -->
-  <div>
-    <div class="input-panel">
-      <div class="panel-header">
-        <div class="panel-number">1</div>
-        <div class="panel-title">Research Configuration</div>
-      </div>
-      <div class="panel-body">
-        <div class="field-group">
-          <label class="field-label">Research Topic / Title *</label>
-          <textarea class="field-textarea" id="research-topic" placeholder="e.g., Experiences and Attitudes of Nurses Toward Cultural Sensitivity in Patient Management Across Three Healthcare Levels in Lagos State, Nigeria"></textarea>
-        </div>
-
-        <div class="field-group">
-          <label class="field-label">Study Setting / Location</label>
-          <input type="text" class="field-input" id="study-setting" placeholder="e.g., Lagos State, Nigeria">
-        </div>
-
-        <div class="field-group">
-          <label class="field-label">Study Population / Focus Group</label>
-          <input type="text" class="field-input" id="study-population" placeholder="e.g., Registered Nurses across Primary, Secondary, and Tertiary Hospitals">
-        </div>
-
-        <div class="field-group">
-          <label class="field-label">Research Discipline / Field</label>
-          <div class="select-wrap">
-            <select class="field-select" id="research-field">
-              <option value="nursing">Nursing & Midwifery</option>
-              <option value="medicine">Medicine / Public Health</option>
-              <option value="education">Education / Curriculum</option>
-              <option value="psychology">Psychology / Mental Health</option>
-              <option value="sociology">Sociology / Social Work</option>
-              <option value="pharmacy">Pharmacy / Pharmacology</option>
-              <option value="environmental">Environmental Health</option>
-              <option value="other">Other Healthcare Field</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="field-group">
-          <label class="field-label">Sections to Generate</label>
-          <div class="sections-grid">
-            <label class="section-check">
-              <input type="checkbox" checked value="background" name="sections"> 
-              <span>1.1 Background to Study</span>
-            </label>
-            <label class="section-check">
-              <input type="checkbox" checked value="problem" name="sections"> 
-              <span>1.2 Statement of Problem</span>
-            </label>
-            <label class="section-check">
-              <input type="checkbox" checked value="objectives" name="sections"> 
-              <span>1.3 Objectives (Broad & Specific)</span>
-            </label>
-            <label class="section-check">
-              <input type="checkbox" checked value="questions" name="sections"> 
-              <span>1.4 Research Questions</span>
-            </label>
-            <label class="section-check">
-              <input type="checkbox" checked value="significance" name="sections"> 
-              <span>1.5 Significance of Study</span>
-            </label>
-            <label class="section-check">
-              <input type="checkbox" checked value="scope" name="sections"> 
-              <span>1.6 Scope of Study</span>
-            </label>
-            <label class="section-check">
-              <input type="checkbox" checked value="definitions" name="sections"> 
-              <span>1.7 Operational Definitions</span>
-            </label>
-            <label class="section-check">
-              <input type="checkbox" checked value="references" name="sections"> 
-              <span>References (APA 7th)</span>
-            </label>
-          </div>
-        </div>
-
-        <div class="field-group">
-          <label class="field-label">Additional Context (Optional)</label>
-          <textarea class="field-textarea" id="extra-context" placeholder="Any specific theories, frameworks, key variables, or context you want included..." style="min-height: 72px;"></textarea>
-        </div>
-
-        <button class="btn-generate" id="generate-btn" onclick="generateChapter()">
-          <div class="spinner"></div>
-          <span class="btn-text">✦ Generate Chapter One</span>
-        </button>
-        <div class="error-msg" id="error-msg"></div>
-      </div>
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+  <div class="auth-modal">
+    <h2 id="auth-title">Welcome Back</h2>
+    <p id="auth-subtitle">Sign in to save and access your care plans across devices.</p>
+    <div class="auth-error" id="auth-error"></div>
+    <div class="auth-field" id="name-field" style="display:none;">
+      <label>Full Name</label>
+      <input type="text" id="auth-name" placeholder="e.g. Sarah Johnson, RN"/>
     </div>
-
-    <!-- Output -->
-    <div class="output-area" style="margin-top: 32px; position: relative;">
-      <div class="loading-overlay" id="loading-overlay">
-        <div class="loading-animation">
-          <div class="loading-dot"></div>
-          <div class="loading-dot"></div>
-          <div class="loading-dot"></div>
-        </div>
-        <div>
-          <div class="loading-text">Synthesizing academic literature...</div>
-          <div class="loading-sub" id="loading-sub">Searching verified sources from 2021–2024</div>
-        </div>
-        <div class="progress-bar-wrap">
-          <div class="progress-bar"></div>
-        </div>
-      </div>
-
-      <div class="output-placeholder" id="output-placeholder">
-        <div class="placeholder-icon">📄</div>
-        <div class="placeholder-title">Your chapter will appear here</div>
-        <div class="placeholder-sub">Complete the form above and click Generate</div>
-      </div>
-
-      <div id="output-document">
-        <div class="doc-toolbar">
-          <div class="doc-toolbar-left">Generated Document · APA 7th Edition</div>
-          <div class="doc-actions">
-            <button class="btn-action btn-copy" onclick="copyContent()">Copy Text</button>
-            <button class="btn-action btn-print" onclick="window.print()">Print / Save PDF</button>
-          </div>
-        </div>
-        <div class="doc-content" id="doc-content"></div>
-      </div>
+    <div class="auth-field">
+      <label>Email</label>
+      <input type="email" id="auth-email" placeholder="your@email.com"/>
     </div>
-  </div>
-
-  <!-- Sidebar -->
-  <div class="sidebar">
-    <div class="info-card">
-      <div class="info-card-header">System Capabilities</div>
-      <div class="info-card-body">
-        <ul class="feature-list">
-          <li>Generates all Chapter One sections in academic format</li>
-          <li>Auto-inserts verifiable APA 7th edition citations (2021+)</li>
-          <li>References drawn from PubMed, Scopus, Google Scholar indexes</li>
-          <li>Adapts content to your specific study context & population</li>
-          <li>Structures objectives (broad & specific) automatically</li>
-          <li>Provides complete reference list with DOIs where available</li>
-        </ul>
-      </div>
+    <div class="auth-field">
+      <label>Password</label>
+      <input type="password" id="auth-password" placeholder="••••••••"/>
     </div>
-
-    <div class="info-card">
-      <div class="info-card-header">Writing Standards</div>
-      <div class="info-card-body">
-        <ul class="feature-list">
-          <li>APA 7th Edition citation style</li>
-          <li>Academic prose — journal-quality writing</li>
-          <li>Funnel structure: global → regional → local context</li>
-          <li>IMRAD-compatible framing for problem statements</li>
-          <li>WHO, UN SDG, and policy alignment where relevant</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="info-card">
-      <div class="info-card-header">Usage Tip</div>
-      <div class="info-card-body">
-        <p class="tip-text">For best results, provide a detailed research topic title and specific study setting. The more context you provide, the more tailored and academically rigorous the output will be. Always verify citations with your institution's library databases.</p>
-      </div>
-    </div>
-
-    <div class="info-card">
-      <div class="info-card-header">Sample Topics</div>
-      <div class="info-card-body">
-        <ul class="feature-list">
-          <li>Medication Adherence Among Hypertensive Patients in Rural Communities</li>
-          <li>Knowledge of Infection Prevention Among Student Nurses</li>
-          <li>Burnout and Job Satisfaction Among ICU Nurses</li>
-          <li>Maternal Health Seeking Behavior in Urban Slums</li>
-        </ul>
-      </div>
-    </div>
+    <button class="auth-btn" id="auth-submit">Sign In</button>
+    <div class="auth-switch">Don't have an account? <a id="auth-toggle">Create one</a></div>
+    <div class="auth-switch" style="margin-top:10px;"><a id="auth-close" style="cursor:pointer;">✕ Close</a></div>
   </div>
 </div>
 
-<footer>
-  <p>ResearchGen · AI-Powered Academic Writing · For Academic Assistance Purposes</p>
-  <p>Always verify all citations with institutional library databases</p>
-</footer>
+<!-- SAVED PLANS PANEL -->
+<div class="saved-panel" id="saved-panel">
+  <button class="panel-close" id="panel-close">✕</button>
+  <h3>📂 My Plans</h3>
+  <div class="panel-sub">Your saved care plans</div>
+  <div id="saved-list"></div>
+</div>
+
+<!-- TOAST -->
+<div class="save-toast" id="save-toast"></div>
+
+<!-- MAIN -->
+<main>
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow">Evidence-Based Nursing</div>
+    <h1>Enter a Nursing Diagnosis</h1>
+    <p>Instantly generate a complete, evidence-based nursing care plan</p>
+
+    <!-- SEARCH -->
+    <div class="search-wrap">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="diagnosis-input" placeholder="e.g. Acute Pain, Anxiety, Risk for Infection…" autocomplete="off"/>
+        <button id="generate-btn" onclick="generatePlan()">Generate Plan</button>
+      </div>
+      <div id="suggestions"></div>
+    </div>
+
+    <!-- QUICK CHIPS -->
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <!-- STATES -->
+  <div id="empty-state">
+    <div class="empty-icon">📄</div>
+    <p>Your care plan will appear here</p>
+  </div>
+
+  <div id="loader">
+    <div class="spinner"></div>
+    <p>Generating care plan…</p>
+  </div>
+
+  <!-- OUTPUT -->
+  <div id="care-plan"></div>
+</main>
 
 <script>
-const SYSTEM_PROMPT = `You are an expert academic writer specializing in health sciences and nursing research. You generate comprehensive, scholarly Chapter One content for research projects. Your writing must:
+  /* ── Set background image from uploaded file ── */
+  // The bg-scene div will use a local reference; for the redesign we use a matching hospital room photo
+  // Users can replace the URL below with a base64 of their uploaded image
+  const bgScene = document.getElementById('bgScene');
+  // Try to load the uploaded image via fetch (works when served locally)
+  // Fallback: use a serene medical/hospital aesthetic placeholder
+  bgScene.style.backgroundImage = "url('1771652672945.png')";
+  bgScene.style.backgroundSize = 'cover';
+  bgScene.style.backgroundPosition = 'center';
 
-1. Follow APA 7th edition citation style throughout
-2. Use ONLY real, verifiable references published from 2021 onward from credible sources (PubMed, Scopus, WHO, peer-reviewed journals)
-3. Structure citations properly as (Author, Year) in-text
-4. Write in formal academic prose — clear, logical, and well-structured
-5. Follow the Nigerian/African academic research structure
-6. Generate a funnel-shaped narrative (global → regional → local → specific gap)
-7. Ensure all references listed at the end are real publications with accurate details
-8. Reference list should use full APA 7th format with DOI where applicable
-
-IMPORTANT: Generate ONLY real citations from real papers. If uncertain, use commonly cited papers from top journals like Journal of Nursing Management, BMC Nursing, International Journal of Nursing Studies, African Journal of Nursing, etc. Never fabricate author names or paper titles.`;
-
-function getSections() {
-  const checks = document.querySelectorAll('input[name="sections"]:checked');
-  return Array.from(checks).map(c => c.value);
-}
-
-function buildPrompt(topic, setting, population, field, sections, extra) {
-  const sectionLabels = {
-    background: '1.1 Background to the Study (5-7 paragraphs, funnel structure, heavily cited)',
-    problem: '1.2 Statement of the Problem (3-4 paragraphs, identifying specific gaps)',
-    objectives: '1.3 Objectives of the Study (Broad Objective + 3-4 Specific Objectives numbered)',
-    questions: '1.4 Research Questions (matching specific objectives)',
-    significance: '1.5 Significance of the Study (multiple stakeholder perspectives)',
-    scope: '1.6 Scope of the Study (geographic, population, time scope)',
-    definitions: '1.7 Operational Definition of Terms (8-10 key terms defined)',
-    references: 'References (complete APA 7th edition list of all cited works)'
+  /* ───────────── DATA ───────────── */
+  const PLANS = {
+    "Acute Pain": {
+      relatedTo: "tissue injury, inflammation, or surgical procedure",
+      evidencedBy: ["Verbal report of pain", "Guarding or protective behavior", "Facial grimacing", "Changes in vital signs (↑HR, ↑BP)", "Restlessness or inability to rest"],
+      goals: [
+        "Patient will report pain level ≤ 3/10 within 1 hour of intervention.",
+        "Patient will demonstrate at least two non-pharmacological pain management techniques by end of shift.",
+        "Patient will show relaxed facial expression and body posture within 2 hours."
+      ],
+      interventions: [
+        { action: "Assess pain using PQRST method every 2–4 hours and PRN.", rationale: "Provides baseline data and evaluates effectiveness of pain interventions." },
+        { action: "Administer analgesics as prescribed; evaluate response within 30 minutes.", rationale: "Pharmacological management reduces pain signal transmission and perception." },
+        { action: "Position patient for comfort; support affected areas with pillows.", rationale: "Reduces muscle tension and relieves pressure on painful anatomical sites." },
+        { action: "Apply ice or heat therapy as ordered by physician.", rationale: "Thermal therapy modulates pain signals at the site and reduces local inflammation." },
+        { action: "Teach deep breathing, guided imagery, and distraction techniques.", rationale: "Non-pharmacological methods complement medication and empower patient self-management." },
+        { action: "Cluster care activities and minimize environmental stimuli (noise, light).", rationale: "Sensory overload can amplify pain perception; clustering care reduces interruptions." }
+      ],
+      evaluation: "Patient reports pain ≤ 3/10; displays relaxed demeanor; independently uses non-pharmacological strategies; vital signs within acceptable range.",
+      priority: "high"
+    },
+    "Impaired Gas Exchange": {
+      relatedTo: "ventilation-perfusion imbalance, alveolar-capillary membrane changes",
+      evidencedBy: ["SpO₂ < 92%", "Dyspnea at rest or exertion", "Altered mental status or confusion", "Cyanosis of lips/fingertips", "Abnormal ABG values"],
+      goals: [
+        "Patient will maintain SpO₂ ≥ 95% on prescribed oxygen or room air.",
+        "Patient will demonstrate unlabored breathing with RR 12–20 breaths/min.",
+        "Patient will remain alert and oriented to person, place, and time throughout shift."
+      ],
+      interventions: [
+        { action: "Monitor respiratory rate, depth, and SpO₂ continuously; auscultate breath sounds q2–4h.", rationale: "Early detection of deterioration enables prompt, potentially life-saving intervention." },
+        { action: "Administer supplemental oxygen as prescribed; titrate to maintain SpO₂ ≥ 95%.", rationale: "Corrects hypoxemia and prevents end-organ damage from tissue hypoxia." },
+        { action: "Position patient in semi-Fowler's (30–45°) or high Fowler's position.", rationale: "Gravity promotes lung expansion and reduces pressure of abdominal contents on diaphragm." },
+        { action: "Encourage deep breathing and controlled coughing exercises every 2 hours.", rationale: "Mobilizes secretions and maximizes alveolar ventilation." },
+        { action: "Suction airway as needed if patient cannot clear secretions independently.", rationale: "Maintains airway patency and directly improves gas exchange." },
+        { action: "Monitor and report ABG results; prepare for escalation if values worsen.", rationale: "ABGs reflect the efficacy of gas exchange and directly guide therapy adjustments." }
+      ],
+      evaluation: "SpO₂ within target range; respirations unlabored at 12–20/min; patient alert and oriented; breath sounds clear or improved.",
+      priority: "high"
+    },
+    "Fluid Volume Deficit": {
+      relatedTo: "excessive fluid loss, inadequate fluid intake, or third-space shifting",
+      evidencedBy: ["Dry mucous membranes", "Decreased skin turgor", "Tachycardia", "Hypotension or orthostatic changes", "Urine output < 30 mL/hr"],
+      goals: [
+        "Patient will maintain urine output ≥ 30 mL/hr throughout shift.",
+        "Patient will demonstrate moist mucous membranes and adequate skin turgor within 4 hours.",
+        "Vital signs will remain within patient's normal range."
+      ],
+      interventions: [
+        { action: "Monitor intake and output strictly every 1–2 hours; weigh patient daily at the same time.", rationale: "Accurate fluid balance data is the gold standard for guiding replacement therapy." },
+        { action: "Administer IV fluids as prescribed; monitor for signs of fluid overload.", rationale: "Restores circulating blood volume and improves tissue perfusion." },
+        { action: "Assess skin turgor, mucous membranes, and capillary refill every 4 hours.", rationale: "These clinical signs reflect hydration status and guide reassessment of interventions." },
+        { action: "Monitor vital signs and orthostatic blood pressure every 2–4 hours.", rationale: "Detects hemodynamic instability associated with hypovolemia early." },
+        { action: "Encourage oral fluids if not contraindicated; offer patient's preferred beverages.", rationale: "Voluntary fluid intake is the safest route when the patient's condition allows." },
+        { action: "Monitor lab values: BUN, creatinine, hematocrit, and electrolytes.", rationale: "Laboratory markers indicate degree of dehydration and guide rehydration targets." }
+      ],
+      evaluation: "Urine output ≥ 30 mL/hr; stable hemodynamics; moist mucous membranes; electrolytes within normal limits.",
+      priority: "high"
+    },
+    "Risk for Infection": {
+      relatedTo: "invasive procedures, immunosuppression, skin integrity disruption, or indwelling devices",
+      evidencedBy: ["Presence of identified risk factors (no current signs of active infection)"],
+      goals: [
+        "Patient will remain free from signs and symptoms of infection throughout hospitalization.",
+        "Patient will correctly demonstrate proper hand hygiene technique before discharge.",
+        "All wound and IV access sites will remain clean, dry, and without signs of infection."
+      ],
+      interventions: [
+        { action: "Perform hand hygiene before and after all patient contact using soap/water or alcohol-based rub.", rationale: "Hand hygiene remains the single most effective measure to prevent healthcare-associated infections." },
+        { action: "Monitor temperature, WBC count, and signs of localized infection every 4–8 hours.", rationale: "Early detection of infection trends allows prompt treatment before sepsis develops." },
+        { action: "Use strict aseptic technique for all invasive procedures and dressing changes.", rationale: "Minimizes introduction of exogenous pathogens into sterile body compartments." },
+        { action: "Change IV tubing, dressings, and urinary catheters per facility policy.", rationale: "Reduces microbial colonization and biofilm formation on indwelling devices." },
+        { action: "Educate patient and family on hand hygiene, wound care, and when to notify the nurse.", rationale: "Empowering patients to recognize and report signs of infection improves safety outcomes." },
+        { action: "Administer prophylactic antibiotics as prescribed and on schedule.", rationale: "Maintains therapeutic drug levels that suppress microbial growth in high-risk patients." }
+      ],
+      evaluation: "No signs of infection; patient afebrile; WBC within normal limits; all invasive sites intact without erythema, warmth, or purulent drainage.",
+      priority: "medium"
+    },
+    "Impaired Physical Mobility": {
+      relatedTo: "pain, musculoskeletal impairment, neuromuscular dysfunction, or prescribed bed rest",
+      evidencedBy: ["Limited range of motion", "Inability to ambulate independently", "Muscle weakness or fatigue", "Decreased grip strength"],
+      goals: [
+        "Patient will demonstrate safe transfer techniques with minimal assistance by day 2.",
+        "Patient will ambulate at least 50 feet with appropriate assistive device before discharge.",
+        "Patient will maintain skin integrity with no pressure injuries throughout hospitalization."
+      ],
+      interventions: [
+        { action: "Assess functional mobility level every shift using a standardized tool (Braden, Morse Fall Scale).", rationale: "Establishes a baseline and identifies specific deficits to target interventions." },
+        { action: "Perform passive or active-assistive ROM exercises every 2–4 hours when patient is in bed.", rationale: "Prevents contractures, maintains joint function, and promotes circulation." },
+        { action: "Reposition patient every 2 hours using a documented turning schedule.", rationale: "Relieves sustained pressure that impedes blood flow and causes pressure injury." },
+        { action: "Collaborate with physical and occupational therapy for individualized mobility plan.", rationale: "Specialized therapy optimizes functional recovery and independence." },
+        { action: "Apply anti-embolism stockings or sequential compression devices as ordered.", rationale: "Reduces risk of deep vein thrombosis in patients with limited mobility." },
+        { action: "Encourage and assist with progressive ambulation as patient tolerates.", rationale: "Early mobility is a primary evidence-based intervention to improve functional outcomes." }
+      ],
+      evaluation: "Patient ambulates with appropriate assistive device; no new pressure injuries; prescribed ROM maintained; patient verbalizes safety precautions.",
+      priority: "medium"
+    },
+    "Anxiety": {
+      relatedTo: "threat to health status, situational crisis, or unfamiliar hospital environment",
+      evidencedBy: ["Expressed worry or fear", "Restlessness and irritability", "Tachycardia and diaphoresis", "Difficulty concentrating", "Reported feeling of dread"],
+      goals: [
+        "Patient will verbalize a reduction in anxiety within 1 hour of therapeutic interaction.",
+        "Patient will demonstrate at least one relaxation technique to independently manage anxiety.",
+        "Patient will identify two personal coping strategies by end of shift."
+      ],
+      interventions: [
+        { action: "Establish therapeutic rapport; use active listening and acknowledge patient's feelings without judgment.", rationale: "Therapeutic alliance creates emotional safety and reduces fear of isolation." },
+        { action: "Provide clear, honest information about diagnosis, procedures, and the plan of care.", rationale: "Fear of the unknown is a primary driver of anxiety; information restores a sense of control." },
+        { action: "Teach and coach diaphragmatic breathing and progressive muscle relaxation techniques.", rationale: "Activates the parasympathetic nervous system, counteracting the anxiety stress response." },
+        { action: "Minimize environmental stressors; provide a quiet, calm, well-lit environment.", rationale: "Sensory overstimulation amplifies anxiety responses in vulnerable individuals." },
+        { action: "Involve patient in care decisions whenever possible.", rationale: "Perceived control is a key protective factor against anxiety and helplessness." },
+        { action: "Consult social work, chaplaincy, or psychiatric liaison services as appropriate.", rationale: "Multidisciplinary support addresses psychosocial, spiritual, and psychiatric dimensions of anxiety." }
+      ],
+      evaluation: "Patient reports decreased anxiety; demonstrates relaxation technique independently; participates in care decisions; vital signs within normal range.",
+      priority: "medium"
+    },
+    "Impaired Skin Integrity": {
+      relatedTo: "pressure, shear forces, moisture, nutritional deficiency, or altered tissue perfusion",
+      evidencedBy: ["Disruption of skin surface or wound present", "Erythema or ulceration", "Altered skin sensation", "Drainage or eschar noted"],
+      goals: [
+        "Wound will show objective signs of healing (decreased dimensions, granulation tissue) within 5 days.",
+        "Patient will verbalize wound care steps correctly before discharge.",
+        "No new pressure injuries will develop during the current hospitalization."
+      ],
+      interventions: [
+        { action: "Assess wound characteristics (size, depth, edges, drainage, odor) each shift using a standardized tool.", rationale: "Systematic assessment tracks wound trajectory and guides evidence-based treatment modifications." },
+        { action: "Perform wound care using strict aseptic technique per physician or wound care nurse orders.", rationale: "Maintains a clean wound environment and promotes optimal conditions for healing." },
+        { action: "Reposition every 2 hours; use pressure-redistribution mattress or foam overlay.", rationale: "Eliminates sustained pressure that impedes blood flow to vulnerable tissue." },
+        { action: "Keep skin clean and dry; apply moisture-barrier cream to at-risk periwound areas.", rationale: "Moisture maceration increases tissue fragility and susceptibility to further breakdown." },
+        { action: "Optimize nutritional status in collaboration with dietitian; promote high-protein, high-calorie intake.", rationale: "Adequate protein and micronutrients are essential substrates for tissue repair and immune defense." },
+        { action: "Educate patient and caregiver on wound care technique, positioning schedule, and nutrition.", rationale: "Caregiver competency is critical for safe discharge and prevention of wound recurrence." }
+      ],
+      evaluation: "Wound healing progressing with documented measurements; no new skin breakdown; patient and caregiver demonstrate correct wound care procedure.",
+      priority: "high"
+    },
+    "Ineffective Airway Clearance": {
+      relatedTo: "excessive secretions, decreased energy, pain-related splinting, or neuromuscular dysfunction",
+      evidencedBy: ["Productive or ineffective cough", "Adventitious breath sounds (crackles/rhonchi)", "Dyspnea", "Inability to clear secretions independently"],
+      goals: [
+        "Patient will demonstrate an effective cough with productive expectoration of secretions within 4 hours.",
+        "Breath sounds will be clear or significantly improved within 24 hours.",
+        "Patient will maintain a patent airway independently throughout shift."
+      ],
+      interventions: [
+        { action: "Auscultate all lung fields every 2–4 hours and as needed; document and report changes.", rationale: "Identifies areas of congestion and evaluates the effectiveness of clearance interventions." },
+        { action: "Encourage fluid intake of 2–3 L/day unless contraindicated by condition.", rationale: "Adequate hydration thins viscous secretions, facilitating effective expectoration." },
+        { action: "Teach and assist with controlled coughing (huff coughing) and diaphragmatic breathing.", rationale: "Effective cough technique mobilizes secretions with less oxygen expenditure and fatigue." },
+        { action: "Administer nebulizer treatments, mucolytics, or bronchodilators as prescribed.", rationale: "Pharmacological agents dilate airways and reduce secretion viscosity." },
+        { action: "Perform chest physiotherapy or assist with postural drainage as ordered.", rationale: "Gravity-assisted positioning and percussion dislodge and mobilize retained secretions." },
+        { action: "Suction oropharynx or nasopharynx if patient is unable to clear airway independently.", rationale: "Mechanical clearance removes obstructing secretions and immediately restores airway patency." }
+      ],
+      evaluation: "Clear or improved breath sounds on auscultation; patient demonstrates effective cough; RR within normal limits; SpO₂ stable ≥ 95%.",
+      priority: "high"
+    }
   };
 
-  const selectedSections = sections.map(s => sectionLabels[s]).filter(Boolean);
+  const DIAGNOSES = Object.keys(PLANS);
 
-  return `Generate a complete, scholarly CHAPTER ONE for the following research project:
+  /* ───────────── INIT ───────────── */
+  const input = document.getElementById('diagnosis-input');
+  const suggestionsEl = document.getElementById('suggestions');
+  const generateBtn = document.getElementById('generate-btn');
+  const printBtn = document.getElementById('print-btn');
+  const loader = document.getElementById('loader');
+  const carePlanEl = document.getElementById('care-plan');
+  const emptyState = document.getElementById('empty-state');
 
-RESEARCH TOPIC: ${topic}
-STUDY SETTING: ${setting || 'Not specified'}
-STUDY POPULATION: ${population || 'Not specified'}
-RESEARCH FIELD: ${field}
-ADDITIONAL CONTEXT: ${extra || 'None'}
+  // Build chips
+  const chipsEl = document.getElementById('chips');
+  DIAGNOSES.slice(0, 6).forEach(d => {
+    const btn = document.createElement('button');
+    btn.className = 'chip';
+    btn.textContent = d;
+    btn.onclick = () => { input.value = d; generate(d); };
+    chipsEl.appendChild(btn);
+  });
 
-Generate these sections:
-${selectedSections.map((s, i) => `${i+1}. ${s}`).join('\n')}
+  /* ───────────── INPUT EVENTS ───────────── */
+  input.addEventListener('input', () => {
+    const val = input.value.trim();
+    generateBtn.style.display = val ? 'block' : 'none';
+    if (val.length < 2) { suggestionsEl.style.display = 'none'; return; }
+    const filtered = DIAGNOSES.filter(d => d.toLowerCase().includes(val.toLowerCase()));
+    if (!filtered.length) { suggestionsEl.style.display = 'none'; return; }
+    suggestionsEl.innerHTML = filtered.map(d =>
+      `<button class="suggestion-item" onclick="selectDiagnosis('${d}')">
+         <span class="suggestion-dot">⊕</span>${d}
+       </button>`
+    ).join('');
+    suggestionsEl.style.display = 'block';
+  });
 
-FORMAT REQUIREMENTS:
-- Start with: CHAPTER ONE
-- Use proper academic headings (1.1, 1.2, etc.)
-- All in-text citations in APA format: (Surname et al., Year) or (Surname & Surname, Year)
-- Background must cite at least 12-15 different references, all from 2021-2024
-- Problem statement: 10+ citations
-- References section: full APA 7th format with real DOIs where possible
-- Write in academic English — formal, precise, scholarly
-- Minimum 2000 words for background section
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.search-wrap')) suggestionsEl.style.display = 'none';
+  });
 
-The content should be highly specific to the topic, setting, and population provided. Use real research findings from actual published studies.`;
-}
-
-async function generateChapter() {
-  const topic = document.getElementById('research-topic').value.trim();
-  if (!topic) {
-    showError('Please enter a research topic to proceed.');
-    return;
+  function selectDiagnosis(d) {
+    input.value = d;
+    suggestionsEl.style.display = 'none';
+    generate(d);
   }
 
-  const setting = document.getElementById('study-setting').value.trim();
-  const population = document.getElementById('study-population').value.trim();
-  const field = document.getElementById('research-field').value;
-  const extra = document.getElementById('extra-context').value.trim();
-  const sections = getSections();
+  function generatePlan() { generate(input.value.trim()); }
 
-  if (sections.length === 0) {
-    showError('Please select at least one section to generate.');
-    return;
+  /* ───────────── GENERATE ───────────── */
+  window.generate = function(diagnosis) { _generate(diagnosis); };
+  function generate(diagnosis) { _generate(diagnosis); }
+  function _generate(diagnosis) {
+    const plan = PLANS[diagnosis];
+    if (!plan) { showError(diagnosis); return; }
+    suggestionsEl.style.display = 'none';
+    emptyState.style.display = 'none';
+    carePlanEl.style.display = 'none';
+    loader.style.display = 'block';
+    printBtn.style.display = 'none';
+
+    setTimeout(() => {
+      loader.style.display = 'none';
+      renderPlan(diagnosis, plan);
+    }, 850);
   }
 
-  clearError();
-  setLoading(true);
+  /* ───────────── RENDER ───────────── */
+  function renderPlan(diagnosis, plan) {
+    const priorityClass = `priority-${plan.priority}`;
+    const priorityLabel = plan.priority.toUpperCase() + ' PRIORITY';
+    const today = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
 
-  const loadingMessages = [
-    'Searching verified academic sources...',
-    'Analyzing recent literature (2021–2024)...',
-    'Structuring background narrative...',
-    'Formulating objectives and research questions...',
-    'Compiling APA reference list...',
-    'Finalizing academic content...'
-  ];
-  
-  let msgIdx = 0;
-  const msgInterval = setInterval(() => {
-    document.getElementById('loading-sub').textContent = loadingMessages[msgIdx % loadingMessages.length];
-    msgIdx++;
-  }, 2500);
+    const evidencedByHTML = plan.evidencedBy.map(e =>
+      `<li class="evidence-item"><span class="evidence-arrow">▸</span>${e}</li>`
+    ).join('');
 
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 8000,
-        system: SYSTEM_PROMPT,
-        messages: [{
-          role: 'user',
-          content: buildPrompt(topic, setting, population, field, sections, extra)
-        }]
-      })
-    });
+    const goalsHTML = plan.goals.map((g, i) =>
+      `<div class="goal-item">
+         <div class="goal-num">${i + 1}</div>
+         <p class="goal-text">${g}</p>
+       </div>`
+    ).join('');
 
-    clearInterval(msgInterval);
+    const interventionsHTML = plan.interventions.map((item, i) =>
+      `<div class="intervention-row">
+         <div>
+           <div class="int-label int-action-label">Intervention #${i + 1}</div>
+           <p class="int-action">${item.action}</p>
+         </div>
+         <div class="int-divider">
+           <div class="int-label int-rationale-label">Rationale</div>
+           <p class="int-rationale">${item.rationale}</p>
+         </div>
+       </div>`
+    ).join('');
 
-    if (!response.ok) throw new Error(`API error: ${response.status}`);
-    
-    const data = await response.json();
-    const text = data.content.map(c => c.text || '').join('');
-    renderDocument(text);
+    carePlanEl.innerHTML = `
+      <div class="dx-banner">
+        <div>
+          <div class="dx-label">Nursing Diagnosis</div>
+          <div class="dx-title">${diagnosis}</div>
+          <p class="dx-related">Related to: <span>${plan.relatedTo}</span></p>
+        </div>
+        <span class="priority-badge ${priorityClass}">${priorityLabel}</span>
+      </div>
 
-  } catch (err) {
-    clearInterval(msgInterval);
-    showError('Generation failed: ' + err.message + '. Please try again.');
-  } finally {
-    setLoading(false);
+      <div class="cards-grid">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-icon">📋</span>
+            <span class="card-title">As Evidenced By</span>
+          </div>
+          <ul class="evidence-list">${evidencedByHTML}</ul>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-icon">🎯</span>
+            <span class="card-title">Goals &amp; Expected Outcomes</span>
+          </div>
+          ${goalsHTML}
+        </div>
+      </div>
+
+      <div class="card card-full" style="margin-bottom:16px;">
+        <div class="card-header">
+          <span class="card-icon">💊</span>
+          <span class="card-title">Nursing Interventions &amp; Rationale</span>
+        </div>
+        <div class="interventions-grid">${interventionsHTML}</div>
+      </div>
+
+      <div class="card card-eval">
+        <div class="card-header">
+          <span class="card-icon">✅</span>
+          <span class="card-title">Evaluation Criteria</span>
+        </div>
+        <div class="eval-box">
+          <p class="eval-text">${plan.evaluation}</p>
+        </div>
+      </div>
+
+      <p class="plan-footer">Generated on ${today} &nbsp;·&nbsp; Always validate with clinical judgment and institutional protocols</p>
+
+      <!-- ══ PRINT-ONLY TABLE ══ -->
+      <div id="print-header">
+        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #4a9ba8;padding-bottom:10px;margin-bottom:14px;">
+          <div>
+            <div style="font-size:22px;font-weight:700;color:#1e2d2f;font-family:'Cormorant Garamond',serif;">NurseCare AI — Nursing Care Plan</div>
+            <div style="font-size:11px;color:#475569;letter-spacing:1.5px;text-transform:uppercase;margin-top:3px;">NANDA-I Compliant &nbsp;|&nbsp; Generated: ${today}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:13px;font-weight:700;color:#1e2d2f;">Patient Care Document</div>
+            <div style="font-size:11px;color:#64748b;">For clinical use — validate with judgment</div>
+          </div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:14px;font-size:12px;">
+          <tr>
+            <td style="background:#4a9ba8;color:#fff;font-weight:700;padding:8px 14px;width:180px;font-size:11px;letter-spacing:1px;text-transform:uppercase;">Nursing Diagnosis</td>
+            <td style="padding:8px 14px;border:1px solid #cbd5e1;font-weight:700;font-size:14px;color:#1e2d2f;">${diagnosis}</td>
+            <td style="background:${plan.priority==='high'?'#fef2f2':plan.priority==='medium'?'#fffbeb':'#f0fdf4'};color:${plan.priority==='high'?'#c0544b':plan.priority==='medium'?'#d4912a':'#4a8c5a'};font-weight:700;padding:8px 14px;width:130px;text-align:center;border:1px solid #cbd5e1;font-size:11px;letter-spacing:1px;text-transform:uppercase;">${priorityLabel}</td>
+          </tr>
+          <tr>
+            <td style="background:#f1f5f9;color:#475569;font-weight:700;padding:8px 14px;font-size:11px;letter-spacing:1px;text-transform:uppercase;">Related To</td>
+            <td colspan="2" style="padding:8px 14px;border:1px solid #cbd5e1;color:#334155;">${plan.relatedTo}</td>
+          </tr>
+          <tr>
+            <td style="background:#f1f5f9;color:#475569;font-weight:700;padding:8px 14px;font-size:11px;letter-spacing:1px;text-transform:uppercase;vertical-align:top;">As Evidenced By</td>
+            <td colspan="2" style="padding:8px 14px;border:1px solid #cbd5e1;color:#334155;">${plan.evidencedBy.map((e,i)=>`${i+1}. ${e}`).join('<br/>')}</td>
+          </tr>
+        </table>
+      </div>
+
+      <table id="print-table" style="width:100%;border-collapse:collapse;font-size:12px;page-break-inside:auto;">
+        <thead>
+          <tr style="background:#4a9ba8;">
+            <th style="color:#fff;padding:10px 12px;text-align:left;font-size:11px;letter-spacing:1px;text-transform:uppercase;width:30%;">Goals &amp; Expected Outcomes</th>
+            <th style="color:#fff;padding:10px 12px;text-align:left;font-size:11px;letter-spacing:1px;text-transform:uppercase;width:35%;">Nursing Interventions</th>
+            <th style="color:#fff;padding:10px 12px;text-align:left;font-size:11px;letter-spacing:1px;text-transform:uppercase;width:35%;">Rationale</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${plan.interventions.map((item, i) => `
+            <tr style="page-break-inside:avoid;background:${i%2===0?'#fff':'#f8fafc'};">
+              <td style="padding:10px 12px;border:1px solid #e2e8f0;vertical-align:top;color:#1e293b;line-height:1.5;">
+                ${i < plan.goals.length ? `<span style="color:#2d7a87;font-weight:700;margin-right:4px;">${i+1}.</span> ${plan.goals[i]}` : '<span style="color:#94a3b8;font-style:italic;">—</span>'}
+              </td>
+              <td style="padding:10px 12px;border:1px solid #e2e8f0;vertical-align:top;color:#1e293b;line-height:1.5;">
+                <span style="color:#4a9ba8;font-weight:700;margin-right:4px;">#${i+1}</span> ${item.action}
+              </td>
+              <td style="padding:10px 12px;border:1px solid #e2e8f0;vertical-align:top;color:#475569;font-style:italic;line-height:1.5;">${item.rationale}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+        <tfoot>
+          <tr style="background:#f0fdf4;">
+            <td colspan="3" style="padding:12px 14px;border:2px solid #a8c4ac;">
+              <span style="font-weight:700;color:#4a8c5a;font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-right:10px;">Evaluation Criteria:</span>
+              <span style="color:#1e2d2f;line-height:1.6;">${plan.evaluation}</span>
+            </td>
+          </tr>
+          <tr style="background:#f1f5f9;">
+            <td colspan="3" style="padding:8px 14px;border:1px solid #e2e8f0;font-size:10px;color:#94a3b8;text-align:center;font-style:italic;">
+              This care plan was generated by NurseCare AI on ${today}. Always validate all clinical decisions with current evidence, institutional protocols, and professional judgment.
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    `;
+
+    carePlanEl.style.display = 'block';
+    printBtn.style.display = 'block';
+    carePlanEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (window._onPlanRendered) window._onPlanRendered(diagnosis);
   }
-}
 
-function renderDocument(rawText) {
-  const doc = document.getElementById('output-document');
-  const content = document.getElementById('doc-content');
-  const placeholder = document.getElementById('output-placeholder');
-
-  // Parse and format the content
-  let html = formatAcademicText(rawText);
-  content.innerHTML = html;
-  
-  placeholder.style.display = 'none';
-  doc.style.display = 'block';
-  
-  // Smooth scroll to document
-  doc.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-function formatAcademicText(text) {
-  // Split into lines and process
-  const lines = text.split('\n');
-  let html = '';
-  let inList = false;
-  let listType = '';
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) {
-      if (inList) { html += `</${listType}>`;  inList = false; }
-      continue;
-    }
-
-    // Chapter heading
-    if (/^CHAPTER\s+ONE\s*$/i.test(line)) {
-      html += `<h1>CHAPTER ONE</h1>`;
-      continue;
-    }
-
-    // Numbered section headers like 1.1, 1.2, etc.
-    if (/^\d+\.\d+\s+/.test(line)) {
-      if (inList) { html += `</${listType}>`; inList = false; }
-      html += `<h2>${escHtml(line)}</h2>`;
-      continue;
-    }
-
-    // References heading
-    if (/^References\s*$/i.test(line)) {
-      if (inList) { html += `</${listType}>`; inList = false; }
-      html += `<div class="references-section"><h2>References</h2>`;
-      // Process remaining lines as references
-      let refs = '';
-      for (let j = i + 1; j < lines.length; j++) {
-        const ref = lines[j].trim();
-        if (ref) refs += `<p class="ref-item">${escHtml(ref)}</p>`;
-      }
-      html += refs + '</div>';
-      break;
-    }
-
-    // Sub-headings like "Broad Objective:" or "Specific Objectives:"
-    if (/^(Broad Objective|Specific Objectives|Research Questions):?\s*$/i.test(line)) {
-      if (inList) { html += `</${listType}>`; inList = false; }
-      html += `<h3>${escHtml(line)}</h3>`;
-      continue;
-    }
-
-    // Numbered list items
-    if (/^\d+\.\s+/.test(line) && !/^\d+\.\d+/.test(line)) {
-      if (!inList || listType !== 'ol') {
-        if (inList) html += `</${listType}>`;
-        html += '<ol>'; inList = true; listType = 'ol';
-      }
-      html += `<li>${escHtml(line.replace(/^\d+\.\s+/, ''))}</li>`;
-      continue;
-    }
-
-    // Close list if we hit a normal paragraph
-    if (inList) { html += `</${listType}>`; inList = false; }
-
-    html += `<p>${escHtml(line)}</p>`;
+  function showError(diagnosis) {
+    emptyState.style.display = 'none';
+    loader.style.display = 'none';
+    carePlanEl.innerHTML = `
+      <div style="text-align:center;padding:48px;background:rgba(255,255,255,0.82);backdrop-filter:blur(20px);border-radius:20px;border:1px solid rgba(255,255,255,0.6);animation:fadeUp 0.4s ease both;">
+        <div style="font-size:48px;margin-bottom:16px;">🔍</div>
+        <p style="color:#c0544b;font-size:16px;margin-bottom:8px;font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;">Diagnosis not found</p>
+        <p style="color:#7a9ea4;font-size:14px;">"${diagnosis}" is not in the database. Try one of the quick-select options above, or check your spelling.</p>
+      </div>`;
+    carePlanEl.style.display = 'block';
+    printBtn.style.display = 'none';
   }
 
-  if (inList) html += `</${listType}>`;
-  return html;
-}
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') generatePlan(); });
 
-function escHtml(str) {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-function setLoading(state) {
-  const btn = document.getElementById('generate-btn');
-  const overlay = document.getElementById('loading-overlay');
-  
-  btn.classList.toggle('loading', state);
-  btn.disabled = state;
-  overlay.classList.toggle('active', state);
-
-  if (state) {
-    document.getElementById('output-placeholder').style.display = 'block';
-    document.getElementById('output-document').style.display = 'none';
-  }
-}
-
-function showError(msg) {
-  const el = document.getElementById('error-msg');
-  el.textContent = msg;
-  el.style.display = 'block';
-}
-
-function clearError() {
-  document.getElementById('error-msg').style.display = 'none';
-}
-
-async function copyContent() {
-  const content = document.getElementById('doc-content');
-  const text = content.innerText;
-  try {
-    await navigator.clipboard.writeText(text);
-    const btn = document.querySelector('.btn-copy');
-    btn.textContent = 'Copied!';
-    setTimeout(() => btn.textContent = 'Copy Text', 2000);
-  } catch(e) {
-    alert('Please use Ctrl+A then Ctrl+C to copy the document text.');
-  }
-}
+  /* ══════════════════════════════════════════
+     FIREBASE INTEGRATION
+  ══════════════════════════════════════════ */
 </script>
 
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+           signOut, onAuthStateChanged, updateProfile }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyB3e7nL26P9F9TkksF9c_8PiNCejFXfYHM",
+    authDomain: "nurses-vault.firebaseapp.com",
+    databaseURL: "https://nurses-vault-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "nurses-vault",
+    storageBucket: "nurses-vault.firebasestorage.app",
+    messagingSenderId: "1005365121748",
+    appId: "1:1005365121748:web:5bd35605ffb7dd0e7e6141"
+  };
+
+  let app, auth, db;
+  try {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+  } catch(e) {
+    console.error('Firebase init failed:', e);
+    document.getElementById('login-btn').textContent = '⚠️ Firebase Error';
+    document.getElementById('login-btn').title = e.message;
+  }
+
+  /* ── DOM refs ── */
+  const loginBtn       = document.getElementById('login-btn');
+  const logoutBtn      = document.getElementById('logout-btn');
+  const userBar        = document.getElementById('user-bar');
+  const userNameDisplay= document.getElementById('user-name-display');
+  const myPlansBtn     = document.getElementById('my-plans-btn');
+  const savePlanBtn    = document.getElementById('save-plan-btn');
+  const authOverlay    = document.getElementById('auth-overlay');
+  const authTitle      = document.getElementById('auth-title');
+  const authSubtitle   = document.getElementById('auth-subtitle');
+  const authError      = document.getElementById('auth-error');
+  const authSubmit     = document.getElementById('auth-submit');
+  const authToggle     = document.getElementById('auth-toggle');
+  const authClose      = document.getElementById('auth-close');
+  const nameField      = document.getElementById('name-field');
+  const authName       = document.getElementById('auth-name');
+  const authEmail      = document.getElementById('auth-email');
+  const authPassword   = document.getElementById('auth-password');
+  const savedPanel     = document.getElementById('saved-panel');
+  const panelClose     = document.getElementById('panel-close');
+  const savedList      = document.getElementById('saved-list');
+  const saveToast      = document.getElementById('save-toast');
+
+  let isSignUp = false;
+  let currentUser = null;
+  let currentDiagnosis = null; // track what's currently displayed
+
+  /* ── Auth state listener ── */
+  onAuthStateChanged(auth, user => {
+    currentUser = user;
+    if (user) {
+      loginBtn.style.display = 'none';
+      userBar.classList.add('visible');
+      const name = user.displayName || user.email.split('@')[0];
+      userNameDisplay.textContent = '👤 ' + name;
+    } else {
+      loginBtn.style.display = 'block';
+      userBar.classList.remove('visible');
+      savePlanBtn.style.display = 'none';
+    }
+  });
+
+  /* ── Auth modal toggle ── */
+  loginBtn.addEventListener('click', () => {
+    authOverlay.classList.add('active');
+    authError.style.display = 'none';
+    authEmail.value = ''; authPassword.value = ''; authName.value = '';
+  });
+  authClose.addEventListener('click', () => authOverlay.classList.remove('active'));
+  authOverlay.addEventListener('click', e => {
+    if (e.target === authOverlay) authOverlay.classList.remove('active');
+  });
+
+  authToggle.addEventListener('click', () => {
+    isSignUp = !isSignUp;
+    authError.style.display = 'none';
+    if (isSignUp) {
+      authTitle.textContent = 'Create Account';
+      authSubtitle.textContent = 'Join NurseCare AI to save your care plans.';
+      authSubmit.textContent = 'Create Account';
+      authToggle.textContent = 'Sign in instead';
+      nameField.style.display = 'block';
+    } else {
+      authTitle.textContent = 'Welcome Back';
+      authSubtitle.textContent = 'Sign in to save and access your care plans across devices.';
+      authSubmit.textContent = 'Sign In';
+      authToggle.textContent = 'Create one';
+      nameField.style.display = 'none';
+    }
+  });
+
+  authSubmit.addEventListener('click', async () => {
+    if (!auth) { authError.textContent = 'Firebase not loaded. Are you opening this as a local file? Please host it first.'; authError.style.display = 'block'; return; }
+    const email = authEmail.value.trim();
+    const password = authPassword.value;
+    const name = authName.value.trim();
+    authError.style.display = 'none';
+    authSubmit.textContent = 'Please wait…';
+    authSubmit.disabled = true;
+
+    try {
+      if (isSignUp) {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        if (name) await updateProfile(cred.user, { displayName: name });
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+      authOverlay.classList.remove('active');
+      showToast('✅ Signed in successfully!');
+    } catch (err) {
+      authError.textContent = friendlyError(err.code);
+      authError.style.display = 'block';
+    }
+    authSubmit.textContent = isSignUp ? 'Create Account' : 'Sign In';
+    authSubmit.disabled = false;
+  });
+
+  /* ── Sign out ── */
+  logoutBtn.addEventListener('click', async () => {
+    await signOut(auth);
+    showToast('👋 Signed out');
+    savedPanel.classList.remove('open');
+    savePlanBtn.style.display = 'none';
+  });
+
+  /* ── Save current plan ── */
+  savePlanBtn.addEventListener('click', async () => {
+    if (!currentUser) { authOverlay.classList.add('active'); return; }
+    if (!currentDiagnosis) return;
+    try {
+      await addDoc(collection(db, 'users', currentUser.uid, 'plans'), {
+        diagnosis: currentDiagnosis,
+        savedAt: new Date().toISOString()
+      });
+      showToast('💾 Care plan saved!');
+    } catch (e) {
+      showToast('❌ Error saving plan');
+    }
+  });
+
+  /* ── Load saved plans ── */
+  myPlansBtn.addEventListener('click', async () => {
+    savedPanel.classList.add('open');
+    savedList.innerHTML = '<p style="color:var(--text-muted);font-size:13px;">Loading…</p>';
+    try {
+      const q = query(
+        collection(db, 'users', currentUser.uid, 'plans'),
+        orderBy('savedAt', 'desc')
+      );
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        savedList.innerHTML = `<div class="no-saved"><div>📄</div>No saved plans yet.<br><small>Generate a care plan and hit 💾 Save Plan.</small></div>`;
+        return;
+      }
+      savedList.innerHTML = '';
+      snap.forEach(docSnap => {
+        const data = docSnap.data();
+        const date = new Date(data.savedAt).toLocaleDateString('en-US', {
+          month: 'short', day: 'numeric', year: 'numeric'
+        });
+        const item = document.createElement('div');
+        item.className = 'saved-item';
+        item.innerHTML = `
+          <button class="saved-item-del" data-id="${docSnap.id}" title="Delete">🗑</button>
+          <div class="saved-item-title">${data.diagnosis}</div>
+          <div class="saved-item-date">Saved ${date}</div>
+        `;
+        item.addEventListener('click', e => {
+          if (e.target.classList.contains('saved-item-del')) return;
+          // Load the plan
+          const diagInput = document.getElementById('diagnosis-input');
+          diagInput.value = data.diagnosis;
+          savedPanel.classList.remove('open');
+          // Trigger generate (call global generate function)
+          window._generateFromFirebase(data.diagnosis);
+        });
+        item.querySelector('.saved-item-del').addEventListener('click', async (e) => {
+          e.stopPropagation();
+          await deleteDoc(doc(db, 'users', currentUser.uid, 'plans', docSnap.id));
+          item.remove();
+          if (!savedList.children.length) {
+            savedList.innerHTML = `<div class="no-saved"><div>📄</div>No saved plans yet.</div>`;
+          }
+          showToast('🗑 Plan deleted');
+        });
+        savedList.appendChild(item);
+      });
+    } catch (e) {
+      savedList.innerHTML = '<p style="color:var(--red);font-size:13px;">Error loading plans. Check Firestore rules.</p>';
+    }
+  });
+
+  panelClose.addEventListener('click', () => savedPanel.classList.remove('open'));
+
+  /* ── Show save button when a plan is visible ── */
+  // We expose a hook that the main script calls
+  window._onPlanRendered = (diagnosis) => {
+    currentDiagnosis = diagnosis;
+    if (currentUser) savePlanBtn.style.display = 'block';
+  };
+
+  window._generateFromFirebase = (diagnosis) => {
+    // Call existing generate function
+    if (window.generate) window.generate(diagnosis);
+  };
+
+  /* ── Toast helper ── */
+  function showToast(msg) {
+    saveToast.textContent = msg;
+    saveToast.classList.add('show');
+    setTimeout(() => saveToast.classList.remove('show'), 3000);
+  }
+
+  /* ── Error messages ── */
+  function friendlyError(code) {
+    const map = {
+      'auth/email-already-in-use': 'This email is already registered. Try signing in.',
+      'auth/invalid-email': 'Please enter a valid email address.',
+      'auth/weak-password': 'Password must be at least 6 characters.',
+      'auth/user-not-found': 'No account found with this email.',
+      'auth/wrong-password': 'Incorrect password. Please try again.',
+      'auth/invalid-credential': 'Incorrect email or password.',
+      'auth/too-many-requests': 'Too many attempts. Please wait a moment.',
+    };
+    return map[code] || 'Something went wrong. Please try again.';
+  }
+</script>
 </body>
 </html>
