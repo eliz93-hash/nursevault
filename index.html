@@ -96,6 +96,12 @@ body.dark .active-plan-card{background:#1a2920;border-color:#2a3d30}
 body.dark .div{color:#6a9276}
 body.dark .div::before,body.dark .div::after{background:#2a3d30}
 body.dark #pg-mode-select .pg{background:#0f1a14}
+body.dark .stu-bank-card{background:#1a2920;border-color:#2a3d30}
+body.dark .stu-bank-card.active-bank{border-color:var(--gl);background:rgba(18,160,112,.07)}
+body.dark .stu-bank-title{color:#c8e6d4}
+body.dark .stu-bank-meta{color:#6a9276}
+body.dark .stu-bank-btn-take{background:linear-gradient(135deg,#064A34,#0A6E4E);border-color:rgba(18,160,112,.4)}
+body.dark .stu-bank-btn-review{background:#1a2920;border-color:#2a3d30;color:#a8c4b0}
 
 /* Dark mode toggle button */
 .dm-toggle{position:absolute;top:16px;right:16px;width:38px;height:38px;border-radius:50%;border:none;background:rgba(255,255,255,.15);color:#fff;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;transition:all .2s}
@@ -1059,6 +1065,37 @@ body.dark .insight-alert{color:#c8e6d4;border-color:rgba(245,166,35,.2)}
 .bank-stat{text-align:center}
 .bank-stat-num{font-weight:800;font-size:16px;color:var(--gd)}
 .bank-stat-lbl{font-size:10px;color:var(--mt)}
+/* Student mock bank archive */
+.stu-bank-archive{margin-top:0;margin-bottom:4px}
+.stu-bank-card{background:#fff;border:1.5px solid var(--bd);border-radius:14px;padding:14px 16px;margin-bottom:10px;transition:box-shadow .2s,border-color .2s}
+.stu-bank-card.active-bank{border-color:var(--g);background:rgba(10,110,78,.03)}
+.stu-bank-card:hover{box-shadow:0 4px 16px rgba(10,110,78,.1)}
+.stu-bank-title{font-weight:700;font-size:15px;color:var(--gd);margin-bottom:2px}
+.stu-bank-meta{font-size:12px;color:var(--mt);margin-bottom:10px}
+.stu-bank-actions{display:flex;gap:8px}
+.stu-bank-btn-take{flex:1;padding:9px 10px;border-radius:10px;border:1.5px solid var(--g);background:linear-gradient(135deg,var(--gd),var(--g));color:#fff;font-family:'DM Sans';font-size:13px;font-weight:700;cursor:pointer;transition:opacity .2s;text-align:center}
+.stu-bank-btn-take:hover{opacity:.88}
+.stu-bank-btn-take:disabled{opacity:.45;cursor:not-allowed}
+.stu-bank-btn-review{flex:1;padding:9px 10px;border-radius:10px;border:1.5px solid var(--bd);background:var(--bg);color:var(--gd);font-family:'DM Sans';font-size:13px;font-weight:700;cursor:pointer;transition:all .2s}
+.stu-bank-btn-review:hover{border-color:var(--g);background:#e6f4ef}
+.stu-bank-btn-review:disabled{opacity:.45;cursor:not-allowed}
+.stu-bank-myhist{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.stu-bank-myhist-chip{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:var(--bg);color:var(--mt);border:1px solid var(--bd)}
+.stu-bank-myhist-chip.pass{background:rgba(34,197,94,.1);color:#15803d;border-color:rgba(34,197,94,.3)}
+.stu-bank-myhist-chip.fail{background:rgba(229,62,62,.08);color:var(--red);border-color:rgba(229,62,62,.25)}
+/* Unified exam archive box */
+.exam-archive-box-hd{background:linear-gradient(135deg,#0A6E4E 0%,#064A34 55%,#1E1B4B 100%);border-radius:16px 16px 0 0;padding:18px 18px 0}
+.exam-archive-box-title{font-family:'Playfair Display',serif;font-size:18px;color:#fff;margin-bottom:4px}
+.exam-archive-box-sub{font-size:12px;color:rgba(255,255,255,.55);margin-bottom:14px}
+.exam-archive-tabs{display:flex;gap:6px}
+.exam-arc-tab{flex:1;padding:9px 10px;border-radius:10px 10px 0 0;border:none;font-family:'DM Sans';font-size:13px;font-weight:700;cursor:pointer;background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);transition:all .2s}
+.exam-arc-tab.on{background:#fff;color:var(--gd)}
+.exam-arc-panel{background:#fff;border:1.5px solid var(--bd);border-top:none;border-radius:0 0 16px 16px;padding:14px 14px 6px}
+.exam-arc-empty{text-align:center;padding:32px 16px;color:var(--mt);font-size:13px}
+body.dark .exam-archive-box-hd{background:linear-gradient(135deg,#064A34 0%,#0a1f15 55%,#1a1230 100%)}
+body.dark .exam-arc-tab.on{background:#1a2920;color:#c8e6d4}
+body.dark .exam-arc-panel{background:#1a2920;border-color:#2a3d30}
+body.dark .stu-bank-card{background:#1a2920;border-color:#2a3d30}
 .rotation-timer-bar{height:4px;background:var(--bg);border-radius:2px;margin-top:10px;overflow:hidden}
 .rotation-timer-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--g),var(--gl));transition:width .5s}
 
@@ -1853,6 +1890,27 @@ function loadDarkMode() {
       <button class="fchip" onclick="setFilter(this,'OSCE')">OSCE</button>
     </div>
     <div class="ygrid" id="ygrid"></div>
+
+    <!-- MOCK & HOSPITAL FINAL EXAM ARCHIVE BOX -->
+    <div id="exam-archive-box" style="margin-top:28px;margin-bottom:24px;display:none">
+      <div class="exam-archive-box-hd">
+        <div class="exam-archive-box-title">🏥 Mock &amp; Hospital Final Exam</div>
+        <div class="exam-archive-box-sub">All present and past exam banks — take or review anytime</div>
+        <!-- inner tab switcher -->
+        <div class="exam-archive-tabs">
+          <button class="exam-arc-tab on" id="arc-tab-mock" onclick="switchArchiveTab('mock',this)">📋 NMCN Mock</button>
+          <button class="exam-arc-tab" id="arc-tab-hosp" onclick="switchArchiveTab('hosp',this)">🏥 Hospital Final</button>
+        </div>
+      </div>
+      <!-- NMCN Mock panel -->
+      <div id="arc-panel-mock" class="exam-arc-panel">
+        <div id="stu-bank-archive-list" class="stu-bank-archive"></div>
+      </div>
+      <!-- Hospital Final panel -->
+      <div id="arc-panel-hosp" class="exam-arc-panel" style="display:none">
+        <div id="stu-hosp-archive-list" class="stu-bank-archive"></div>
+      </div>
+    </div>
 
   </div>
 
@@ -3823,7 +3881,7 @@ function go(page, isBack) {
     nextEl.style.opacity = ''; nextEl.style.transition = ''; nextEl.classList.add('on');
   }, 370);
   _curPage = page;
-  if (page === 'main') { renderYGrid(); renderMsgs(); updateHomeUI(); updateProfUI(); updateMockHomeCard(); updateContinueCard(); }
+  if (page === 'main') { renderYGrid(); renderStudentBankArchive(); renderMsgs(); updateHomeUI(); updateProfUI(); updateMockHomeCard(); updateContinueCard(); }
   if (page === 'login') {
     // Login field pre-fill is handled by the autocomplete system (accounts from Firestore)
     // No stored credentials — users type their email/username
@@ -3849,7 +3907,7 @@ function switchTab(name, el) {
   el.classList.add('on');
   if(name==='chat'){ renderMsgs(); setTimeout(function(){ var m=document.getElementById('msgs'); if(m) m.scrollTop=m.scrollHeight; },50); }
   if(name==='profile'){ updateProfUI(); }
-  if(name==='questions'){ renderYGrid(); }
+  if(name==='questions'){ renderYGrid(); renderStudentBankArchive(); }
 }
 
 function switchAdminTab(name, el) {
@@ -7874,6 +7932,11 @@ var _newBannerShown = false;
 var mockSchedule = { activeBankIdx: 0, intervalHours: 24, nextRotationTs: 0, rotationStartTs: 0 };
 var _rotationCheckInterval = null;
 
+// Hospital Final Exam banks (mirrors MOCK_BANKS)
+var HOSP_BANKS = [];
+var hospHistory = [];
+var hospSchedule = { activeBankIdx: 0 };
+
 // saveMockBanks: each bank stored as its own doc to avoid 1MB Firestore limit
 // Path: global/mock_banks/banks/{bankId}  + index at global/mock_banks
 function saveMockBanks() {
@@ -8166,6 +8229,135 @@ function renderBankArchive() {
       '</div>' +
     '</div>';
   }).join('');
+}
+
+// =========================================================
+// STUDENT — MOCK EXAM BANK ARCHIVE
+// =========================================================
+// =========================================================
+// STUDENT — UNIFIED MOCK & HOSPITAL FINAL EXAM ARCHIVE
+// =========================================================
+var _archiveTab = 'mock';
+
+function switchArchiveTab(tab, btn) {
+  _archiveTab = tab;
+  document.querySelectorAll('.exam-arc-tab').forEach(function(b){ b.classList.remove('on'); });
+  btn.classList.add('on');
+  var mp = document.getElementById('arc-panel-mock');
+  var hp = document.getElementById('arc-panel-hosp');
+  if (mp) mp.style.display = tab === 'mock' ? 'block' : 'none';
+  if (hp) hp.style.display = tab === 'hosp' ? 'block' : 'none';
+}
+
+function _buildBankCardsHtml(banks, history, activeIdx, locked, type) {
+  if (!banks || banks.length === 0) {
+    var label = type === 'hosp' ? 'Hospital Final Exam' : 'NMCN Mock';
+    return '<div class="exam-arc-empty"><div style="font-size:36px;margin-bottom:10px">' + (type === 'hosp' ? '🏥' : '📋') + '</div>No ' + label + ' banks published yet.<br><span style="font-size:12px">Check back soon!</span></div>';
+  }
+  return banks.slice().reverse().map(function(bank, ri) {
+    var realIdx = banks.length - 1 - ri;
+    var isActive = realIdx === activeIdx;
+    var d = new Date(bank.createdAt).toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'});
+    var myAttempts = history.filter(function(h) { return h.bankId === bank.id; });
+    var bestAttempt = myAttempts.length > 0
+      ? myAttempts.reduce(function(best, h) { return h.pct > best.pct ? h : best; }, myAttempts[0])
+      : null;
+    var histHtml = '';
+    if (myAttempts.length > 0) {
+      histHtml = '<div class="stu-bank-myhist">' +
+        '<span class="stu-bank-myhist-chip">\uD83D\uDD01 ' + myAttempts.length + ' attempt' + (myAttempts.length !== 1 ? 's' : '') + '</span>' +
+        '<span class="stu-bank-myhist-chip ' + (bestAttempt.passed ? 'pass' : 'fail') + '">Best: ' + bestAttempt.pct + '% \u2014 ' + (bestAttempt.passed ? 'PASS' : 'FAIL') + '</span>' +
+        '</div>';
+    }
+    var lockedNote = locked ? '<div style="font-size:12px;color:var(--red);margin-bottom:8px">🔒 Pro access required to take exams.</div>' : '';
+    var bid = bank.id.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    var hasQs = bank.questions && bank.questions.length > 0;
+    var takeLabel = (locked ? '🔒 ' : (type === 'hosp' ? '🏥 ' : '📋 ')) + (myAttempts.length > 0 ? 'Retake Exam' : 'Take Exam');
+    var takeFn = type === 'hosp' ? 'launchHospBankExam' : 'launchBankExam';
+    return '<div class="stu-bank-card' + (isActive ? ' active-bank' : '') + '">' +
+      '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">' +
+        (isActive ? '<span class="bank-active-dot"></span>' : '') +
+        '<span class="bank-ver-tag">v' + (realIdx + 1) + '</span>' +
+        (isActive ? '<span style="background:rgba(34,197,94,.1);color:#15803d;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid rgba(34,197,94,.3)">ACTIVE</span>' : '') +
+      '</div>' +
+      '<div class="stu-bank-title">' + (bank.title || (type === 'hosp' ? 'Hospital Final v' : 'Mock Exam v') + (realIdx + 1)) + '</div>' +
+      '<div class="stu-bank-meta">' + (bank.qCount || (bank.questions || []).length) + ' questions \u00b7 ' + d + '</div>' +
+      histHtml + lockedNote +
+      '<div class="stu-bank-actions">' +
+        '<button class="stu-bank-btn-take" onclick="' + takeFn + '(\'' + bid + '\')">' + takeLabel + '</button>' +
+        '<button class="stu-bank-btn-review" onclick="launchBankReview(\'' + bid + '\',\'' + type + '\')"' + (!hasQs ? ' disabled' : '') + '>\uD83D\uDCCB Review</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderStudentBankArchive() {
+  var box = document.getElementById('exam-archive-box');
+  if (!box) return;
+  if (MOCK_BANKS.length === 0 && HOSP_BANKS.length === 0) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  var locked = (mockSettings.requirePro === 'yes') && !isPro;
+  var mockActiveIdx = Math.min(mockSchedule.activeBankIdx || 0, Math.max(0, MOCK_BANKS.length - 1));
+  var hospActiveIdx = Math.min(hospSchedule.activeBankIdx || 0, Math.max(0, HOSP_BANKS.length - 1));
+  var mockList = document.getElementById('stu-bank-archive-list');
+  var hospList = document.getElementById('stu-hosp-archive-list');
+  if (mockList) mockList.innerHTML = _buildBankCardsHtml(MOCK_BANKS, mockHistory, mockActiveIdx, locked, 'mock');
+  if (hospList) hospList.innerHTML = _buildBankCardsHtml(HOSP_BANKS, hospHistory, hospActiveIdx, locked, 'hosp');
+}
+
+function launchBankExam(bankId) {
+  var bank = MOCK_BANKS.find(function(b) { return b.id === bankId; });
+  if (!bank) { toast('\u26a0 Exam bank not found.'); return; }
+  if ((mockSettings.requirePro === 'yes') && !isPro) { showPW(); return; }
+  if (!bank.questions || bank.questions.length === 0) { toast('\u26a0 This bank has no questions.'); return; }
+  MOCK_DB = bank.questions;
+  window._launchingBankId = bankId;
+  window._launchingBankType = 'mock';
+  go('mock-lobby');
+  setTimeout(function() {
+    var t = document.getElementById('mock-lobby-title'); if (t) t.textContent = bank.title || 'NMCN Mock Exam';
+    var qc = document.getElementById('mock-lobby-qcount'); if (qc) qc.textContent = Math.min(bank.questions.length, mockSettings.maxQ || 250);
+    var noq = document.getElementById('mock-lobby-noq'); if (noq) noq.style.display = 'none';
+    var startBtn = document.getElementById('mock-start-btn'); if (startBtn) startBtn.disabled = false;
+    var sw = document.getElementById('mock-lobby-start'); if (sw) sw.style.display = 'block';
+    var lk = document.getElementById('mock-lobby-locked'); if (lk) lk.style.display = 'none';
+  }, 80);
+}
+
+function launchHospBankExam(bankId) {
+  var bank = HOSP_BANKS.find(function(b) { return b.id === bankId; });
+  if (!bank) { toast('\u26a0 Hospital exam bank not found.'); return; }
+  if ((mockSettings.requirePro === 'yes') && !isPro) { showPW(); return; }
+  if (!bank.questions || bank.questions.length === 0) { toast('\u26a0 This bank has no questions.'); return; }
+  MOCK_DB = bank.questions;
+  window._launchingBankId = bankId;
+  window._launchingBankType = 'hosp';
+  go('mock-lobby');
+  setTimeout(function() {
+    var t = document.getElementById('mock-lobby-title'); if (t) t.textContent = bank.title || 'Hospital Final Exam';
+    var sub = document.getElementById('mock-lobby-subtitle'); if (sub) sub.textContent = 'Hospital Final \u00b7 Full simulation';
+    var qc = document.getElementById('mock-lobby-qcount'); if (qc) qc.textContent = Math.min(bank.questions.length, mockSettings.maxQ || 250);
+    var noq = document.getElementById('mock-lobby-noq'); if (noq) noq.style.display = 'none';
+    var startBtn = document.getElementById('mock-start-btn'); if (startBtn) startBtn.disabled = false;
+    var sw = document.getElementById('mock-lobby-start'); if (sw) sw.style.display = 'block';
+    var lk = document.getElementById('mock-lobby-locked'); if (lk) lk.style.display = 'none';
+  }, 80);
+}
+
+function launchBankReview(bankId, type) {
+  var banks = (type === 'hosp') ? HOSP_BANKS : MOCK_BANKS;
+  var bank = banks.find(function(b) { return b.id === bankId; });
+  if (!bank || !bank.questions || bank.questions.length === 0) { toast('\u26a0 No questions to review.'); return; }
+  MX.questions = bank.questions.slice();
+  MX.answers = bank.questions.map(function() { return -1; });
+  MX.flags = bank.questions.map(function() { return false; });
+  MX.active = false;
+  go('mock-answer-review');
+  setTimeout(function() {
+    renderMockAnswerReview('all');
+    var sub = document.getElementById('mock-ar-sub');
+    if (sub) sub.textContent = bank.questions.length + ' questions \u00b7 ' + (bank.title || 'Review Mode');
+  }, 60);
 }
 
 function adminSetActiveBank(idx) {
@@ -9177,6 +9369,7 @@ go('splash');
           if(window.loadAIUsage) window.loadAIUsage();
           // Refresh UI now that all data is loaded
           if(window.renderYGrid) window.renderYGrid();
+          if(window.renderStudentBankArchive) window.renderStudentBankArchive();
           if(window.updateHomeUI) window.updateHomeUI();
           if(window.updateProfUI) window.updateProfUI();
           if(window.renderChat) window.renderChat();
@@ -9352,6 +9545,7 @@ go('splash');
 
     window._globalDataLoaded = true;
     if(window.renderYGrid) window.renderYGrid();
+    if(window.renderStudentBankArchive) window.renderStudentBankArchive();
     if(window.updateMockHomeCard) window.updateMockHomeCard();
   })();
 </script>
