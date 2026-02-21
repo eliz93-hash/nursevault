@@ -3622,18 +3622,72 @@ function loadCodes() {
 }
 
 // --- Question DB ---
+// saveDB: saves each year/paper combo as its own Firestore doc to avoid 1MB limit
+// Path: global/question_db/years/{year}_{paper_sanitised}
 function saveDB() {
-  // Save to global Firestore path (question bank shared across all users)
-  if(window._fbSetDoc) {
-    window._fbSetDoc('global/question_db', {db: DB}).catch(function(e){ console.warn('saveDB error:', e); });
-  }
+  if(!window._fbSetDoc) return;
+  Object.keys(DB).forEach(function(yr) {
+    var papers = DB[yr] || {};
+    Object.keys(papers).forEach(function(paper) {
+      var key = yr + '_' + paper.replace(/\s+/g, '_');
+      var docPath = 'global/question_db/years/' + key;
+      window._fbSetDoc(docPath, { yr: yr, paper: paper, questions: papers[paper] || [] })
+        .catch(function(e){ console.warn('saveDB error for ' + key + ':', e.message); });
+    });
+  });
+  // Save an index doc so clients know which year/papers exist
+  var index = {};
+  Object.keys(DB).forEach(function(yr) { index[yr] = Object.keys(DB[yr] || {}); });
+  window._fbSetDoc('global/question_db', { index: index, updatedAt: Date.now() })
+    .catch(function(e){ console.warn('saveDB index error:', e.message); });
 }
+
+// loadDB: reads the index first, then fetches each year/paper doc
 function loadDB() {
-  if(window._fbGetDoc) {
-    _fbGetDoc('global/question_db').then(function(data){
-      if(data && data.db) DB = data.db;
-    }).catch(function(){});
+  if(!window._fbGetDoc) {
+    // Firebase not ready yet — will be loaded via loadAllUserData after login
+    return;
   }
+  window._fbGetDoc('global/question_db').then(function(meta) {
+    if(!meta || !meta.index) return;
+    var index = meta.index;
+    var years = Object.keys(index);
+    if(years.length === 0) return;
+    var total = 0;
+    years.forEach(function(yr) { total += (index[yr] || []).length; });
+    var loaded = 0;
+    DB = {};
+    years.forEach(function(yr) {
+      DB[yr] = {};
+      (index[yr] || []).forEach(function(paper) {
+        var key = yr + '_' + paper.replace(/\s+/g, '_');
+        window._fbGetDoc('global/question_db/years/' + key).then(function(data) {
+          if(data && data.questions) {
+            DB[yr][paper] = data.questions;
+          }
+          loaded++;
+          if(loaded === total) {
+            // All year/paper docs loaded — refresh UI
+            if(window.renderYGrid) window.renderYGrid();
+            if(window.updateHomeUI) window.updateHomeUI();
+          }
+        }).catch(function(e){ console.warn('loadDB paper error:', key, e.message); loaded++; });
+      });
+    });
+  }).catch(function(e){ console.warn('loadDB index error:', e.message); });
+}
+
+// saveDBPaper: saves a single year/paper to Firestore (used for edits/deletes)
+function saveDBPaper(yr, paper) {
+  if(!window._fbSetDoc) return;
+  var key = yr + '_' + paper.replace(/\s+/g, '_');
+  window._fbSetDoc('global/question_db/years/' + key, { yr: yr, paper: paper, questions: (DB[yr]&&DB[yr][paper]) || [] })
+    .catch(function(e){ console.warn('saveDBPaper error for ' + key + ':', e.message); });
+  // Update index too
+  var index = {};
+  Object.keys(DB).forEach(function(y) { index[y] = Object.keys(DB[y] || {}); });
+  window._fbSetDoc('global/question_db', { index: index, updatedAt: Date.now() })
+    .catch(function(e){ console.warn('saveDBPaper index error:', e.message); });
 }
 
 // --- Performance / quiz history ---
@@ -3663,15 +3717,17 @@ function saveStreak() {
   _fbSave('performance/history', {history: quizHistory}); // same as savePerformance
 }
 function saveMockDB() {
-  // Save to global Firestore path (mock DB shared across all users)
+  // MOCK_DB is the active question list (derived from active bank) — store globally
   if(window._fbSetDoc) {
-    window._fbSetDoc('global/mock_db', {db: MOCK_DB}).catch(function(e){ console.warn('saveMockDB error:', e); });
+    window._fbSetDoc('global/mock_db', { questions: MOCK_DB, updatedAt: Date.now() })
+      .catch(function(e){ console.warn('saveMockDB error:', e.message); });
   }
 }
 function loadMockDB() {
-  if(window._fbGetDoc) {
-    _fbGetDoc('global/mock_db').then(function(data){ if(data && data.db) MOCK_DB=data.db; }).catch(function(){});
-  }
+  if(!window._fbGetDoc) return;
+  window._fbGetDoc('global/mock_db').then(function(data){
+    if(data && data.questions) MOCK_DB = data.questions;
+  }).catch(function(e){ console.warn('loadMockDB error:', e.message); });
 }
 function saveMockSettings() {
   _fbSave('settings/mock', mockSettings);
@@ -4347,7 +4403,7 @@ function toggleQActive(yr, paper, idx) {
   if(DB[yr] && DB[yr][paper] && DB[yr][paper][idx] !== undefined){
     var q = DB[yr][paper][idx];
     q.active = q.active === false ? true : false;
-    saveDB();
+    saveDBPaper(yr, paper);
     renderAdminQView();
     renderYGrid();
     toast(q.active !== false ? '✅ Question activated.' : '⊘ Question deactivated.');
@@ -4396,7 +4452,7 @@ function saveEditQ() {
   if(DB[yr] && DB[yr][paper] && DB[yr][paper][idx] !== undefined){
     var existing = DB[yr][paper][idx];
     DB[yr][paper][idx] = { q:q_txt, o:[a,b,c,d], c:cor, e:exp, active: existing.active !== false };
-    saveDB();
+    saveDBPaper(yr, paper);
     if(msg) msg.innerHTML='<div class="al al-ok">✅ Question updated!</div>';
     renderAdminQView();
     renderYGrid();
@@ -4408,7 +4464,7 @@ function deleteQ(yr, paper, idx) {
   if(!confirm('Delete this question?')) return;
   if(DB[yr] && DB[yr][paper]){
     DB[yr][paper].splice(idx, 1);
-    saveDB();
+    saveDBPaper(yr, paper);
     renderAdminQView();
     renderYGrid();
     toast('Question deleted.');
@@ -7633,25 +7689,56 @@ var _newBannerShown = false;
 var mockSchedule = { activeBankIdx: 0, intervalHours: 24, nextRotationTs: 0, rotationStartTs: 0 };
 var _rotationCheckInterval = null;
 
+// saveMockBanks: each bank stored as its own doc to avoid 1MB Firestore limit
+// Path: global/mock_banks/banks/{bankId}  + index at global/mock_banks
 function saveMockBanks() {
-  if(window._fbSetDoc) {
-    window._fbSetDoc('global/mock_banks', {banks: MOCK_BANKS}).catch(function(e){ console.warn('saveMockBanks error:', e); });
-  }
+  if(!window._fbSetDoc) return;
+  // Save each bank as a separate document
+  MOCK_BANKS.forEach(function(bank, i) {
+    var bankId = bank.id || ('bank_' + i);
+    bank.id = bankId;
+    window._fbSetDoc('global/mock_banks/banks/' + bankId, bank)
+      .catch(function(e){ console.warn('saveMockBanks bank error:', e.message); });
+  });
+  // Save index (metadata only, no questions)
+  var index = MOCK_BANKS.map(function(b) {
+    return { id: b.id, title: b.title, count: (b.questions||[]).length, createdAt: b.createdAt || Date.now() };
+  });
+  window._fbSetDoc('global/mock_banks', { index: index, updatedAt: Date.now() })
+    .catch(function(e){ console.warn('saveMockBanks index error:', e.message); });
 }
+
+// loadMockBanks: read index first, then fetch each bank doc
 function loadMockBanks() {
-  if(window._fbGetDoc) {
-    _fbGetDoc('global/mock_banks').then(function(data){ if(data && data.banks) MOCK_BANKS=data.banks; }).catch(function(){});
-  }
+  if(!window._fbGetDoc) return;
+  window._fbGetDoc('global/mock_banks').then(function(meta) {
+    if(!meta || !meta.index || meta.index.length === 0) return;
+    var index = meta.index;
+    var loaded = 0;
+    var results = new Array(index.length);
+    index.forEach(function(entry, i) {
+      window._fbGetDoc('global/mock_banks/banks/' + entry.id).then(function(bank) {
+        results[i] = bank || entry; // fallback to index entry if full doc missing
+        loaded++;
+        if(loaded === index.length) {
+          MOCK_BANKS = results.filter(Boolean);
+          if(window.renderAdminMockTab) window.renderAdminMockTab();
+        }
+      }).catch(function(e){ console.warn('loadMockBanks bank error:', entry.id, e.message); loaded++; });
+    });
+  }).catch(function(e){ console.warn('loadMockBanks index error:', e.message); });
 }
+
 function saveMockSchedule() {
   if(window._fbSetDoc) {
-    window._fbSetDoc('global/mock_schedule', mockSchedule).catch(function(e){ console.warn('saveMockSchedule error:', e); });
+    window._fbSetDoc('global/mock_schedule', mockSchedule)
+      .catch(function(e){ console.warn('saveMockSchedule error:', e.message); });
   }
 }
 function loadMockSchedule() {
-  if(window._fbGetDoc) {
-    _fbGetDoc('global/mock_schedule').then(function(data){ if(data) mockSchedule=data; }).catch(function(){});
-  }
+  if(!window._fbGetDoc) return;
+  window._fbGetDoc('global/mock_schedule').then(function(data){ if(data) mockSchedule=data; })
+    .catch(function(e){ console.warn('loadMockSchedule error:', e.message); });
 }
 
 // ── ACTIVE BANK ───────────────────────────────────────────
@@ -8657,17 +8744,10 @@ function fetchAIExplanation(q, depth) {
 // ================================================================
 
 
-// All user-specific data is loaded via loadAllUserData() in the Firebase
-// onAuthStateChanged listener once the user is authenticated.
-// Global/admin data (codes, question DB, mock banks, etc.) is loaded below
-// as soon as Firebase is ready, and also via loadAllUserData.
-// No localStorage is used anywhere in this application.
-loadCodes();
-loadDB();
-loadMockDB();
-loadCustomYears();
-loadMockBanks();
-loadMockSchedule();
+// All data is loaded exclusively from Firestore.
+// User data loads via onAuthStateChanged → loadAllUserData() in the Firebase module.
+// Global data (question bank, mock banks, codes) also loads inside loadAllUserData.
+// Nothing runs here that needs Firebase — Firebase module initialises asynchronously.
 startRotationWatcher();
 // Show continue card if there's history
 setTimeout(updateContinueCard, 100);
@@ -8771,15 +8851,23 @@ go('splash');
     q.forEach(function(item){ window._fbSave(item.path, item.data); });
   }
 
-  window._fbSetDoc = async function(path, data) {
+  // Build a Firestore DocumentReference from a slash-delimited path (any depth)
+  function pathRef(path) {
     var parts = path.split('/');
-    var ref = doc(db, parts[0], parts[1], parts[2], parts[3]);
-    await setDoc(ref, data, { merge: true });
+    if(parts.length === 2) return doc(db, parts[0], parts[1]);
+    if(parts.length === 4) return doc(db, parts[0], parts[1], parts[2], parts[3]);
+    if(parts.length === 6) return doc(db, parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]);
+    // Fallback: use collection + id
+    return doc(db, parts[0], parts.slice(1).join('_'));
+  }
+
+  window._fbSetDoc = async function(path, data, opts) {
+    var ref = pathRef(path);
+    await setDoc(ref, data, opts || { merge: true });
   };
 
   window._fbGetDoc = async function(path) {
-    var parts = path.split('/');
-    var ref = parts.length === 2 ? doc(db, parts[0], parts[1]) : doc(db, parts[0], parts[1], parts[2], parts[3]);
+    var ref = pathRef(path);
     var snap = await getDoc(ref);
     return snap.exists() ? snap.data() : null;
   };
@@ -8808,15 +8896,55 @@ go('splash');
         paths[i][1](snap.exists() ? snap.data() : null);
       } catch(e){ console.warn('Load error:', paths[i][0], e.message); }
     }
-    // Also load global/shared data
+    // ── Load global/shared data (question bank, mock banks, schedule) ──
+    // Question DB: read index doc, then fetch each year/paper subcollection doc
     try {
-      var qSnap = await getDoc(doc(db, 'global', 'question_db'));
-      if(qSnap.exists() && qSnap.data().db) window.DB = qSnap.data().db;
+      var qMeta = await getDoc(doc(db, 'global', 'question_db'));
+      if(qMeta.exists() && qMeta.data().index) {
+        var qIndex = qMeta.data().index;
+        var qYears = Object.keys(qIndex);
+        if(qYears.length > 0) {
+          window.DB = {};
+          var qTotal = 0;
+          qYears.forEach(function(yr) { qTotal += (qIndex[yr]||[]).length; });
+          var qLoaded = 0;
+          for(var yi=0; yi<qYears.length; yi++) {
+            var yr = qYears[yi];
+            window.DB[yr] = {};
+            var papers = qIndex[yr] || [];
+            for(var pi=0; pi<papers.length; pi++) {
+              var paper = papers[pi];
+              var key = yr + '_' + paper.replace(/\s+/g, '_');
+              try {
+                var pSnap = await getDoc(doc(db, 'global', 'question_db', 'years', key));
+                if(pSnap.exists() && pSnap.data().questions) {
+                  window.DB[yr][paper] = pSnap.data().questions;
+                }
+              } catch(pe){ console.warn('Load error: question_db year ' + key, pe.message); }
+              qLoaded++;
+            }
+          }
+        }
+      }
     } catch(e){ console.warn('Load error: global/question_db', e.message); }
+
+    // Mock banks: read index, then fetch each bank subcollection doc
     try {
-      var mbSnap = await getDoc(doc(db, 'global', 'mock_banks'));
-      if(mbSnap.exists() && mbSnap.data().banks) window.MOCK_BANKS = mbSnap.data().banks;
+      var mbMeta = await getDoc(doc(db, 'global', 'mock_banks'));
+      if(mbMeta.exists() && mbMeta.data().index && mbMeta.data().index.length > 0) {
+        var mbIndex = mbMeta.data().index;
+        window.MOCK_BANKS = [];
+        for(var bi=0; bi<mbIndex.length; bi++) {
+          var entry = mbIndex[bi];
+          try {
+            var bSnap = await getDoc(doc(db, 'global', 'mock_banks', 'banks', entry.id));
+            window.MOCK_BANKS.push(bSnap.exists() ? bSnap.data() : entry);
+          } catch(be){ console.warn('Load error: mock_banks bank ' + entry.id, be.message); window.MOCK_BANKS.push(entry); }
+        }
+      }
     } catch(e){ console.warn('Load error: global/mock_banks', e.message); }
+
+    // Mock schedule and custom years
     try {
       var msSnap = await getDoc(doc(db, 'global', 'mock_schedule'));
       if(msSnap.exists()) window.mockSchedule = msSnap.data();
@@ -8825,7 +8953,14 @@ go('splash');
       var cySnap = await getDoc(doc(db, 'global', 'custom_years'));
       if(cySnap.exists() && cySnap.data().years) window.customYears = cySnap.data().years;
     } catch(e){ console.warn('Load error: global/custom_years', e.message); }
-    // Flush any queued saves now that we have a valid UID
+
+    // Mock DB (active questions for current exam)
+    try {
+      var mdbSnap = await getDoc(doc(db, 'global', 'mock_db'));
+      if(mdbSnap.exists() && mdbSnap.data().questions) window.MOCK_DB = mdbSnap.data().questions;
+    } catch(e){ console.warn('Load error: global/mock_db', e.message); }
+
+    // Flush any saves that were queued before Firebase was ready
     _flushSaveQueue();
   }
 
@@ -8837,13 +8972,17 @@ go('splash');
         var snap = await getDoc(profileRef);
 
         if(snap.exists()) {
-          // Returning user — load everything from Firestore
+          // Returning user — load everything from Firestore (user data + global data)
           await loadAllUserData(user.uid);
-          // Load per-session data
+          // Load per-session caches
           if(window.loadAIUsage) window.loadAIUsage();
+          // Refresh UI now that all data is loaded
+          if(window.renderYGrid) window.renderYGrid();
+          if(window.updateHomeUI) window.updateHomeUI();
+          if(window.updateProfUI) window.updateProfUI();
           if(window.renderChat) window.renderChat();
           if(window.updateContinueCard) window.updateContinueCard();
-          if(window.renderYGrid) window.renderYGrid();
+          if(window.updateMockHomeCard) window.updateMockHomeCard();
           if(window.go) window.go('main');
         } else if(window.ME && (window.ME.uid === user.uid || !window.ME.uid)) {
           // Brand new user — save their profile (just created by doVerify)
