@@ -1764,7 +1764,7 @@ function loadDarkMode() {
           <input type="checkbox" id="remember-me" style="width:16px;height:16px;accent-color:var(--g);cursor:pointer">
           Remember me
         </label>
-        <a style="font-size:13px;color:var(--g);cursor:pointer;font-weight:600">Forgot Password?</a>
+        <a onclick="doForgotPassword()" style="font-size:13px;color:var(--g);cursor:pointer;font-weight:600">Forgot Password?</a>
       </div>
       <div class="al al-err" id="l-err" style="display:none"></div>
       <button class="btn btn-green" style="width:100%" id="login-btn" onclick="doLogin()">Log In →</button>
@@ -5160,6 +5160,23 @@ function enterApp() { loadReferral(); go('main'); }
 // =========================================================
 // LOGIN
 // =========================================================
+function doForgotPassword() {
+  var email = (g('le') || '').trim();
+  if(!email) {
+    se('le-err', '⚠ Enter your email address above first');
+    return;
+  }
+  if(window._fbSendPasswordReset) {
+    window._fbSendPasswordReset(email).then(function() {
+      toast('📧 Password reset email sent to ' + email);
+    }).catch(function(err) {
+      se('le-err', '⚠ ' + (window._fbFriendlyError ? _fbFriendlyError(err.code) : err.message));
+    });
+  } else {
+    se('le-err', '⚠ Still connecting. Please try again in a moment.');
+  }
+}
+
 function doLogin() {
   var emailOrUser = (g('le')||'').trim();
   var pass = g('lp').trim();
@@ -8729,7 +8746,7 @@ go('splash');
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
-           signOut, onAuthStateChanged, updateProfile }
+           signOut, onAuthStateChanged, updateProfile, sendPasswordResetEmail }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
   import { getFirestore, doc, setDoc, getDoc }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -8789,17 +8806,16 @@ go('splash');
   // ── Auth state listener ──
   onAuthStateChanged(auth, async function(user) {
     if(user) {
-      // User is signed in — load their profile from Firestore
       try {
         var profileRef = doc(db, 'users', user.uid, 'profile', 'data');
         var snap = await getDoc(profileRef);
         if(snap.exists()) {
+          // Existing user — load profile from Firestore
           var profile = snap.data();
           profile.uid = user.uid;
           window.ME = profile;
           window.isPro = profile.isPro || false;
           window.accounts = [profile];
-          // Load all cloud data
           if(window.loadPerformance) window.loadPerformance();
           if(window.loadBookmarks) window.loadBookmarks();
           if(window.loadMockHistory) window.loadMockHistory();
@@ -8807,6 +8823,22 @@ go('splash');
           if(window.loadReferral) window.loadReferral();
           if(window.loadLastQuizState) window.loadLastQuizState();
           if(window.go) window.go('main');
+        } else if(window.ME && window.ME.uid === user.uid) {
+          // New user — profile was just created in memory by doVerify, save it to Firestore
+          var newProfile = {
+            uid: user.uid, id: user.uid,
+            firstName: window.ME.firstName || '', lastName: window.ME.lastName || '',
+            name: window.ME.name || user.displayName || '',
+            username: window.ME.username || '', email: user.email || '',
+            phone: window.ME.phone || '', yearLevel: window.ME.yearLevel || '',
+            photo: window.ME.photo || null, isPro: false,
+            totalAns: 0, totalCor: 0,
+            joined: window.ME.joined || new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})
+          };
+          await setDoc(profileRef, newProfile, { merge: true });
+          window.ME = newProfile;
+          window.isPro = false;
+          window.accounts = [newProfile];
         }
       } catch(e) { console.error('Profile load error:', e); }
     }
@@ -8828,6 +8860,9 @@ go('splash');
     if(window.go) window.go('splash');
   };
   window._fbGetUid = function() { return auth.currentUser ? auth.currentUser.uid : null; };
+  window._fbSendPasswordReset = function(email) {
+    return sendPasswordResetEmail(auth, email);
+  };
 
   // Override the logout button if it exists
   var logoutEl = document.getElementById('logout-btn-fb');
