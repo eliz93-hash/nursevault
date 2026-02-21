@@ -1557,20 +1557,14 @@ function toggleDarkMode() {
   document.body.classList.toggle('dark', _darkMode);
   var icon = _darkMode ? '☀️' : '🌙';
   document.querySelectorAll('.dm-toggle').forEach(function(b){ b.textContent = icon; });
-  try { localStorage.setItem('np_dark', _darkMode ? '1' : '0'); } catch(e){}
+  // Persist to Firestore only — no localStorage
+  _fbSave('settings/preferences', { darkMode: _darkMode });
 }
 function loadDarkMode() {
-  try {
-    var d = localStorage.getItem('np_dark');
-    if(d === '1') {
-      _darkMode = true;
-      document.body.classList.add('dark');
-      document.querySelectorAll('.dm-toggle').forEach(function(b){ b.textContent = '☀️'; });
-    }
-  } catch(e){}
+  // Dark mode preference is loaded from Firestore via loadAllUserData on login.
+  // The settings/preferences path in loadAllUserData applies it.
+  // For anonymous/pre-login state, default is light mode (no flash needed).
 }
-// Apply dark mode immediately to avoid flash
-(function(){ try { if(localStorage.getItem('np_dark')==='1'){ _darkMode=true; document.documentElement.classList.add('dark'); } } catch(e){} })();
 </script>
   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script type="text/javascript">emailjs.init({publicKey:"PDEu7sKFo4tLDnn0x"});</script>
@@ -3534,14 +3528,10 @@ var notificationSettings = {chat: true, admin: true, questions: true};
 var notifications = []; // [{type, message, date, read}]
 
 // =========================================================
-// DEVICE ID (fingerprint-based, stable per device)
+// DEVICE ID (fingerprint-based, in-memory only — no localStorage)
 // =========================================================
 function getDeviceId() {
-  try {
-    var stored = localStorage.getItem('np_device_id');
-    if (stored) return stored;
-  } catch(e){}
-  // Generate a fingerprint from browser properties
+  // Generate a stable fingerprint from browser properties (in-memory per session)
   var nav = window.navigator;
   var raw = [
     nav.userAgent,
@@ -3552,15 +3542,12 @@ function getDeviceId() {
     new Date().getTimezoneOffset(),
     nav.platform || ''
   ].join('|');
-  // Simple hash
   var hash = 0;
   for (var i = 0; i < raw.length; i++) {
     hash = ((hash << 5) - hash) + raw.charCodeAt(i);
     hash = hash & hash;
   }
-  var id = 'dev_' + Math.abs(hash).toString(36) + '_' + Date.now().toString(36);
-  try { localStorage.setItem('np_device_id', id); } catch(e){}
-  return id;
+  return 'dev_' + Math.abs(hash).toString(36);
 }
 var DEVICE_ID = getDeviceId();
 
@@ -3582,39 +3569,23 @@ var chatLog = defaultMsgs.slice();
 // =========================================================
 // =========================================================
 // FIREBASE STORAGE LAYER
-// All save/load functions now sync with Firestore.
-// localStorage is kept as a fast local cache only.
+// All data lives exclusively in Firestore. No localStorage used.
 // =========================================================
 
-// --- Firestore helpers (set by Firebase module below) ---
-var _fbSetDoc = null;   // function(path, data) => Promise
-var _fbGetDoc = null;   // function(path) => Promise<data|null>
+// --- Firestore helpers (overridden by Firebase module after init) ---
+var _fbSetDoc = null;
+var _fbGetDoc = null;
 var _fbReady = false;
+var _fbSaveQueue = []; // queued saves before Firebase is ready
 
 function _fbSave(path, data) {
-  // Always cache locally for speed
-  try { localStorage.setItem('fb_cache_'+path, JSON.stringify(data)); } catch(e){}
-  // Push to Firestore if ready
-  if(_fbSetDoc && ME && ME.uid) {
-    _fbSetDoc('users/' + ME.uid + '/' + path, data).catch(function(e){ console.warn('Firestore save error:', path, e); });
-  }
+  // This is replaced by the Firebase module. Until then, queue saves.
+  _fbSaveQueue.push({path: path, data: data});
 }
 
 function _fbLoad(path, fallback, cb) {
-  // Try local cache first for instant load
-  try {
-    var cached = localStorage.getItem('fb_cache_'+path);
-    if(cached) { cb(JSON.parse(cached)); }
-  } catch(e){}
-  // Then sync from Firestore
-  if(_fbGetDoc && ME && ME.uid) {
-    _fbGetDoc('users/' + ME.uid + '/' + path).then(function(data) {
-      if(data !== null) {
-        try { localStorage.setItem('fb_cache_'+path, JSON.stringify(data)); } catch(e){}
-        cb(data);
-      }
-    }).catch(function(e){ console.warn('Firestore load error:', path, e); });
-  }
+  // This is replaced by the Firebase module. Until then, return fallback.
+  if(fallback !== null && typeof cb === 'function') cb(fallback);
 }
 
 // --- Account / profile ---
@@ -3637,7 +3608,10 @@ function loadAcc() {
 
 // --- Admin codes ---
 function saveCodes() {
-  _fbSave('admin/codes', {codes: generatedCodes});
+  // Save to global Firestore path (admin data shared across all users)
+  if(window._fbSetDoc) {
+    window._fbSetDoc('global/admin_codes', {codes: generatedCodes}).catch(function(e){ console.warn('saveCodes error:', e); });
+  }
 }
 function loadCodes() {
   if(window._fbGetDoc) {
@@ -3649,7 +3623,10 @@ function loadCodes() {
 
 // --- Question DB ---
 function saveDB() {
-  _fbSave('admin/questiondb', {db: DB});
+  // Save to global Firestore path (question bank shared across all users)
+  if(window._fbSetDoc) {
+    window._fbSetDoc('global/question_db', {db: DB}).catch(function(e){ console.warn('saveDB error:', e); });
+  }
 }
 function loadDB() {
   if(window._fbGetDoc) {
@@ -3683,13 +3660,18 @@ function loadNotifications() {
   _fbLoad('notifications/list', null, function(data){ if(data && data.items) notifications=data.items; });
 }
 function saveStreak() {
-  _fbSave('performance/history', {history: quizHistory});
+  _fbSave('performance/history', {history: quizHistory}); // same as savePerformance
 }
 function saveMockDB() {
-  _fbSave('admin/mockdb', {db: MOCK_DB});
+  // Save to global Firestore path (mock DB shared across all users)
+  if(window._fbSetDoc) {
+    window._fbSetDoc('global/mock_db', {db: MOCK_DB}).catch(function(e){ console.warn('saveMockDB error:', e); });
+  }
 }
 function loadMockDB() {
-  _fbLoad('admin/mockdb', null, function(data){ if(data && data.db) MOCK_DB=data.db; });
+  if(window._fbGetDoc) {
+    _fbGetDoc('global/mock_db').then(function(data){ if(data && data.db) MOCK_DB=data.db; }).catch(function(){});
+  }
 }
 function saveMockSettings() {
   _fbSave('settings/mock', mockSettings);
@@ -3742,19 +3724,8 @@ function go(page, isBack) {
   _curPage = page;
   if (page === 'main') { renderYGrid(); renderMsgs(); updateHomeUI(); updateProfUI(); updateMockHomeCard(); updateContinueCard(); }
   if (page === 'login') {
-    // Restore saved credentials
-    try {
-      var saved = localStorage.getItem('np_saved_creds');
-      if(saved) {
-        var creds = JSON.parse(saved);
-        var leEl = document.getElementById('le');
-        var lpEl = document.getElementById('lp');
-        var rmEl = document.getElementById('remember-me');
-        if(leEl) leEl.value = creds.u || '';
-        if(lpEl) lpEl.value = creds.p || '';
-        if(rmEl) rmEl.checked = true;
-      }
-    } catch(x){}
+    // Login field pre-fill is handled by the autocomplete system (accounts from Firestore)
+    // No stored credentials — users type their email/username
   }
   if (page === 'register') { resetReg(); goStep(1); }
   if (page === 'admin') { renderCodesTab(); updateAdminSt(); }
@@ -4678,45 +4649,49 @@ function renderMostFailed() {
   // Track by question text (unique key)
   var failMap = {}; // key -> {q, year, paper, wrong, total}
 
-  // Scan all questions in DB
-  var letters = ['A','B','C','D'];
+  // Load per-question stats from Firestore asynchronously, then re-render
+  el.innerHTML = '<div style="color:var(--mt);font-size:13px;padding:12px 0">⏳ Loading question stats from Firestore…</div>';
+  var keys = [];
   Object.keys(DB).forEach(function(yr){
     if(yrFilter !== 'all' && yr !== yrFilter) return;
     var papers = DB[yr] ? Object.keys(DB[yr]) : [];
     papers.forEach(function(paper){
       if(paperFilter !== 'all' && paper !== paperFilter) return;
       var qs = DB[yr][paper] || [];
-      qs.forEach(function(q, qi){
-        var key = yr+'|'+paper+'|'+qi;
-        // Use stored per-question stats if available
-        var stats = null;
-        try { var raw = localStorage.getItem('np_qstat_'+key); if(raw) stats = JSON.parse(raw); } catch(x){}
-        if(stats && stats.total > 0) {
-          failMap[key] = { q:q, year:yr, paper:paper, wrong: stats.total - stats.correct, total: stats.total };
-        }
-      });
+      qs.forEach(function(q, qi){ keys.push({ key: yr+'|'+paper+'|'+qi, q:q, yr:yr, paper:paper }); });
     });
   });
+  var loaded = 0;
+  if(keys.length === 0) { el.innerHTML = '<p style="color:var(--mt);font-size:14px">No questions in database yet.</p>'; return; }
+  keys.forEach(function(item){
+    var fbKey = 'qstats/'+item.key.replace(/\|/g,'_');
+    _fbLoad(fbKey, null, function(stats){
+      if(stats && stats.total > 0) {
+        failMap[item.key] = { q:item.q, year:item.yr, paper:item.paper, wrong: stats.total - stats.correct, total: stats.total };
+      }
+      loaded++;
+      if(loaded === keys.length) _renderMostFailedResults(el, failMap);
+    });
+  });
+  return; // async — results rendered by _renderMostFailedResults callback
+}
 
+function _renderMostFailedResults(el, failMap) {
   var rows = Object.values(failMap).filter(function(r){ return r.total > 0; });
   rows.sort(function(a,b){
     var ra = a.wrong/a.total, rb = b.wrong/b.total;
     return rb - ra || b.wrong - a.wrong;
   });
   rows = rows.slice(0, 10);
-
   if(rows.length === 0) {
-    // Simulate using quizHistory aggregate if no per-Q stats
     el.innerHTML = '<div class="al al-warn" style="font-size:13px">'+
-      '📊 Per-question tracking activates automatically as students answer questions. '+
-      'Question-level stats are stored locally and will populate here over time.'+
+      '📊 Per-question tracking activates as students answer questions. Stats will appear here over time.'+
     '</div>'+
     '<div style="font-size:13px;color:var(--mt);margin-top:8px">'+
       'Currently tracking <strong>'+quizHistory.length+'</strong> quiz session'+(quizHistory.length!==1?'s':'')+' across all students.'+
     '</div>';
     return;
   }
-
   el.innerHTML = rows.map(function(r, i){
     var failRate = Math.round(r.wrong / r.total * 100);
     var correctRate = 100 - failRate;
@@ -4902,21 +4877,19 @@ function checkRefCode() {
   var hint = document.getElementById('refcode-hint');
   if(!hint) return;
   if(!code){ hint.textContent = 'Have a friend\'s referral code? Enter it to give them credit.'; hint.style.color = ''; return; }
-  // Check if any account has this referral code
-  var found = false;
-  accounts.forEach(function(acc) {
-    if(found || !acc.id) return;
-    try {
-      var d = localStorage.getItem('np_referral_' + acc.id);
-      if(d) {
-        var refD = JSON.parse(d);
-        if((refD.code||'').toUpperCase() === code) found = true;
+  if(code.length < 6){ hint.style.color='var(--mt)'; hint.textContent='Keep typing…'; return; }
+  // Check against Firestore global referral code index
+  if(window._fbGetDoc) {
+    window._fbGetDoc('global/referral_codes').then(function(index) {
+      if(index && index[code]) {
+        hint.style.color='var(--ok)'; hint.textContent='✅ Valid code! Your friend will get credit when you join.';
+      } else {
+        hint.style.color='var(--red)'; hint.textContent='⚠ Code not found. Ask your friend to double-check.';
       }
-    } catch(x){}
-  });
-  if(found){ hint.style.color='var(--ok)'; hint.textContent='✅ Valid code! Your friend will get credit when you join.'; }
-  else if(code.length >= 6){ hint.style.color='var(--red)'; hint.textContent='⚠ Code not found. Ask your friend to double-check.'; }
-  else { hint.style.color='var(--mt)'; hint.textContent='Keep typing…'; }
+    }).catch(function(){ hint.style.color='var(--mt)'; hint.textContent='Could not verify code right now.'; });
+  } else {
+    hint.style.color='var(--mt)'; hint.textContent='Connecting to server…';
+  }
 }
 
 function resetReg() {
@@ -5536,15 +5509,16 @@ function pickAns(i) {
   if(isCorrect) QScore++;
   // Record for exam review
   QAnswers.push({ chosen: i, correct: q.c, q: q });
-  // Track per-question stats
+  // Track per-question stats — stored exclusively on Firestore
   try {
     var qKey = 'np_qstat_'+QYear+'|'+QPaper+'|'+QI;
-    var raw = localStorage.getItem(qKey);
-    var stat = raw ? JSON.parse(raw) : {total:0,correct:0};
-    stat.total++;
-    if(isCorrect) stat.correct++;
-    localStorage.setItem(qKey, JSON.stringify(stat));
-    if(ME && ME.uid) _fbSave('qstats/'+qKey.replace(/\|/g,'_'), stat);
+    var fbKey = 'qstats/'+qKey.replace(/\|/g,'_');
+    _fbLoad(fbKey, {total:0,correct:0}, function(stat) {
+      stat = stat || {total:0,correct:0};
+      stat.total++;
+      if(isCorrect) stat.correct++;
+      _fbSave(fbKey, stat);
+    });
   } catch(x){}
   
   if(QMode==='review'){
@@ -6731,11 +6705,6 @@ function changePassword() {
     return;
   }
   
-  if(currVal !== ME.password) {
-    document.getElementById('curr-pw-err').textContent = 'Current password is incorrect';
-    return;
-  }
-  
   if(newVal.length < 8) {
     document.getElementById('new-pw-err').textContent = 'Password must be at least 8 characters';
     return;
@@ -6746,24 +6715,32 @@ function changePassword() {
     return;
   }
   
-  // Update password
-  ME.password = newVal;
-  for(var i=0; i<accounts.length; i++){
-    if(accounts[i].id === ME.id){
-      accounts[i].password = newVal;
-      break;
-    }
+  if(!window._fbChangePassword) {
+    msg.innerHTML = '<div class="al al-err">⚠ Still connecting. Please try again.</div>';
+    return;
   }
-  saveAcc();
-  
-  msg.innerHTML = '<div class="al al-ok">✅ Password updated successfully!</div>';
-  curr.value = '';
-  newp.value = '';
-  conf.value = '';
-  
-  setTimeout(function(){
-    go('main', true);
-  }, 2000);
+
+  msg.innerHTML = '<div class="al al-warn">🔄 Updating password…</div>';
+
+  // Reauthenticate with current password, then update via Firebase Auth
+  window._fbChangePassword(currVal, newVal).then(function() {
+    msg.innerHTML = '<div class="al al-ok">✅ Password updated successfully!</div>';
+    curr.value = '';
+    newp.value = '';
+    conf.value = '';
+    setTimeout(function(){ go('main', true); }, 2000);
+  }).catch(function(err) {
+    msg.innerHTML = '';
+    if(err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+      document.getElementById('curr-pw-err').textContent = 'Current password is incorrect';
+    } else if(err.code === 'auth/too-many-requests') {
+      msg.innerHTML = '<div class="al al-err">⚠ Too many attempts. Please wait and try again.</div>';
+    } else if(err.code === 'auth/requires-recent-login') {
+      msg.innerHTML = '<div class="al al-err">⚠ Session expired. Please log out and log back in, then try again.</div>';
+    } else {
+      msg.innerHTML = '<div class="al al-err">⚠ ' + (err.message || 'Password change failed.') + '</div>';
+    }
+  });
 }
 
 // =========================================================
@@ -6788,6 +6765,11 @@ var referralData = {
 
 function saveReferral() {
   _fbSave('referral/data', referralData);
+  // Also index the code globally so other users can look it up
+  if(referralData.code && ME && ME.uid && window._fbSetDoc) {
+    var obj = {}; obj[referralData.code.toUpperCase()] = ME.uid;
+    window._fbSetDoc('global/referral_codes', obj, { merge: true }).catch(function(e){ console.warn('Referral code index error:', e); });
+  }
 }
 function loadReferral() {
   var def = { code: genRefCode(), referrals: [], claimedMilestones: [], bonusYears: [], bonusQPerSession: 0 };
@@ -6811,34 +6793,34 @@ function genRefCode() {
 
 // Called when user registers with a referral code
 function applyReferralCode(code, newUserName, newUserId) {
-  if(!code) return;
+  if(!code || !window._fbGetDoc || !window._fbSetDoc) return;
   var upperCode = code.trim().toUpperCase();
-  // Find the account whose referral code matches
-  accounts.forEach(function(acc) {
-    if(acc.id === (ME && ME.id)) return; // skip self
-    var refKey = 'np_referral_' + acc.id;
-    try {
-      var d = localStorage.getItem(refKey);
-      if(!d) return;
-      var refD = JSON.parse(d);
-      if((refD.code || '').toUpperCase() !== upperCode) return;
-      // Match found — add referral
-      var alreadyReferred = refD.referrals.some(function(r){ return r.id === newUserId; });
+  // Look up the owning UID from the global referral code index
+  window._fbGetDoc('global/referral_codes').then(function(index) {
+    if(!index || !index[upperCode]) return; // code not found
+    var ownerUid = index[upperCode];
+    // Load the owner's referral data and credit them
+    window._fbGetDoc('users/' + ownerUid + '/referral/data').then(function(refD) {
+      if(!refD || !refD.code) return;
+      var alreadyReferred = (refD.referrals||[]).some(function(r){ return r.id === newUserId; });
       if(alreadyReferred) return;
+      refD.referrals = refD.referrals || [];
       refD.referrals.push({ name: newUserName, username: newUserName, date: new Date().toLocaleDateString('en-GB'), id: newUserId });
       // Check milestones
       var newCount = refD.referrals.length;
+      refD.claimedMilestones = refD.claimedMilestones || [];
       REF_MILESTONES.forEach(function(m, mi) {
         if(newCount >= m.count && refD.claimedMilestones.indexOf(mi) === -1) {
           refD.claimedMilestones.push(mi);
           applyRefReward(refD, m);
         }
       });
-      localStorage.setItem(refKey, JSON.stringify(refD));
-      // If this is the current user's referral data, update in memory
-      if(ME && acc.id === ME.id) referralData = refD;
-    } catch(x){}
-  });
+      // Save back to owner's Firestore doc
+      window._fbSetDoc('users/' + ownerUid + '/referral/data', refD).catch(function(e){ console.warn('Referral save error:', e); });
+      // If this is the current user's referral data, update in memory too
+      if(ME && ownerUid === ME.uid) referralData = refD;
+    }).catch(function(e){ console.warn('Referral owner load error:', e); });
+  }).catch(function(e){ console.warn('Referral index lookup error:', e); });
 }
 
 function applyRefReward(refD, milestone) {
@@ -7048,12 +7030,15 @@ function submitContact() {
   var mailto = 'mailto:admin@nurseprep.ng?subject=' + encodeURIComponent('[NursePrep Nigeria] ' + subject) + '&body=' + body;
   window.open(mailto, '_blank');
 
-  try {
-    var existing = JSON.parse(localStorage.getItem('np_contact_log')||'[]');
-    existing.unshift({subject:subject, name:name, contact:contact, message:message, date: new Date().toLocaleDateString('en-GB'), ts: Date.now()});
-    if(existing.length > 20) existing = existing.slice(0,20);
-    localStorage.setItem('np_contact_log', JSON.stringify(existing));
-  } catch(x){}
+  // Save contact log to Firestore
+  if(ME && ME.uid) {
+    _fbLoad('contact/log', null, function(existing) {
+      var log = (existing && existing.items) ? existing.items : [];
+      log.unshift({subject:subject, name:name, contact:contact, message:message, date: new Date().toLocaleDateString('en-GB'), ts: Date.now()});
+      if(log.length > 20) log = log.slice(0,20);
+      _fbSave('contact/log', {items: log});
+    });
+  }
 
   msg.innerHTML = '<div class="al al-ok">✅ Message sent! We\'ll get back to you within 24 hours.</div>';
   document.getElementById('contact-subject').value = '';
@@ -7356,11 +7341,12 @@ function onPaymentSuccess(ref, providerName, plan) {
     provider: providerName, date: new Date().toLocaleDateString('en-GB'),
     ts: Date.now()
   };
-  try {
-    var hist = JSON.parse(localStorage.getItem('np_payment_history')||'[]');
+  // Save payment record to Firestore
+  _fbLoad('payments/history', null, function(existing) {
+    var hist = (existing && existing.items) ? existing.items : [];
     hist.unshift(record);
-    localStorage.setItem('np_payment_history', JSON.stringify(hist));
-  } catch(x){}
+    _fbSave('payments/history', {items: hist});
+  });
 
   // Update modal to success
   document.getElementById('pay-modal-awaiting').style.display = 'none';
@@ -7416,10 +7402,14 @@ var DEFAULT_YEARS = ['2025','2024','2023','2022','2021','2020','2019','2018'];
 var customYears = []; // extra years added by admin
 
 function saveCustomYears() {
-  _fbSave('admin/custom_years', {years: customYears});
+  if(window._fbSetDoc) {
+    window._fbSetDoc('global/custom_years', {years: customYears}).catch(function(e){ console.warn('saveCustomYears error:', e); });
+  }
 }
 function loadCustomYears() {
-  _fbLoad('admin/custom_years', null, function(data){ if(data && data.years) customYears=data.years; });
+  if(window._fbGetDoc) {
+    _fbGetDoc('global/custom_years').then(function(data){ if(data && data.years) customYears=data.years; }).catch(function(){});
+  }
 }
 
 // Returns all years (default + custom + any already in DB), sorted descending
@@ -7644,16 +7634,24 @@ var mockSchedule = { activeBankIdx: 0, intervalHours: 24, nextRotationTs: 0, rot
 var _rotationCheckInterval = null;
 
 function saveMockBanks() {
-  _fbSave('admin/mock_banks', {banks: MOCK_BANKS});
+  if(window._fbSetDoc) {
+    window._fbSetDoc('global/mock_banks', {banks: MOCK_BANKS}).catch(function(e){ console.warn('saveMockBanks error:', e); });
+  }
 }
 function loadMockBanks() {
-  _fbLoad('admin/mock_banks', null, function(data){ if(data && data.banks) MOCK_BANKS=data.banks; });
+  if(window._fbGetDoc) {
+    _fbGetDoc('global/mock_banks').then(function(data){ if(data && data.banks) MOCK_BANKS=data.banks; }).catch(function(){});
+  }
 }
 function saveMockSchedule() {
-  _fbSave('admin/mock_schedule', mockSchedule);
+  if(window._fbSetDoc) {
+    window._fbSetDoc('global/mock_schedule', mockSchedule).catch(function(e){ console.warn('saveMockSchedule error:', e); });
+  }
 }
 function loadMockSchedule() {
-  _fbLoad('admin/mock_schedule', null, function(data){ if(data) mockSchedule=data; });
+  if(window._fbGetDoc) {
+    _fbGetDoc('global/mock_schedule').then(function(data){ if(data) mockSchedule=data; }).catch(function(){});
+  }
 }
 
 // ── ACTIVE BANK ───────────────────────────────────────────
@@ -8244,12 +8242,12 @@ function selectReport(el, reason) {
 
 function submitReport() {
   if(!_reportChoice || !_reportQRef) return;
-  // Save report locally (in real app would send to backend)
-  var reports = [];
-  try { var d = localStorage.getItem('np_reports'); if(d) reports = JSON.parse(d); } catch(e){}
-  reports.push({ reason: _reportChoice, ref: _reportQRef, date: new Date().toISOString(), reporter: ME ? ME.name : 'Anonymous' });
-  try { localStorage.setItem('np_reports', JSON.stringify(reports)); } catch(e){}
-  _fbSave('admin/reports', {reports: reports});
+  // Load existing reports from Firestore, append new one, save back
+  _fbLoad('admin/reports', null, function(existing) {
+    var reports = (existing && existing.reports) ? existing.reports : [];
+    reports.push({ reason: _reportChoice, ref: _reportQRef, date: new Date().toISOString(), reporter: ME ? ME.name : 'Anonymous' });
+    _fbSave('admin/reports', {reports: reports});
+  });
   closeReportModal();
   toast('✅ Report submitted! Thank you for helping us improve.');
 }
@@ -8335,23 +8333,28 @@ var AI_FREE_LIMIT = 3;          // free uses per day
 var AI_DEPTH = 'simple';        // current depth selection
 var _aiCurrentQ = null;         // question context for current session
 
-// --- Usage tracking (per-day, localStorage) ---
+// --- AI usage tracking (per-day) — stored exclusively in Firestore ---
+// In-memory cache for this session (loaded once per login via loadAllUserData)
+var _aiUsageCache = null;
+
 function getAIUsage() {
-  try {
+  var today = new Date().toISOString().slice(0,10);
+  if(_aiUsageCache && _aiUsageCache.date === today) return _aiUsageCache;
+  return { date: today, count: 0 };
+}
+function loadAIUsage() {
+  _fbLoad('settings/ai_usage', null, function(data) {
     var today = new Date().toISOString().slice(0,10);
-    var raw = localStorage.getItem('np_ai_usage');
-    var d = raw ? JSON.parse(raw) : {};
-    if(d.date !== today) return { date: today, count: 0 };
-    return d;
-  } catch(x) { return { date: '', count: 0 }; }
+    if(data && data.date === today) _aiUsageCache = data;
+    else _aiUsageCache = { date: today, count: 0 };
+  });
 }
 function incrementAIUsage() {
-  try {
-    var u = getAIUsage();
-    u.count++;
-    u.date = new Date().toISOString().slice(0,10);
-    localStorage.setItem('np_ai_usage', JSON.stringify(u));
-  } catch(x) {}
+  var u = getAIUsage();
+  u.count++;
+  u.date = new Date().toISOString().slice(0,10);
+  _aiUsageCache = u;
+  _fbSave('settings/ai_usage', u);
 }
 
 // --- Show/hide button after answer ---
@@ -8654,22 +8657,17 @@ function fetchAIExplanation(q, depth) {
 // ================================================================
 
 
-loadAcc();
+// All user-specific data is loaded via loadAllUserData() in the Firebase
+// onAuthStateChanged listener once the user is authenticated.
+// Global/admin data (codes, question DB, mock banks, etc.) is loaded below
+// as soon as Firebase is ready, and also via loadAllUserData.
+// No localStorage is used anywhere in this application.
 loadCodes();
 loadDB();
-loadChat();
-loadPerformance();
-loadNotifSettings();
-loadNotifications();
 loadMockDB();
-loadMockSettings();
-loadMockHistory();
 loadCustomYears();
 loadMockBanks();
 loadMockSchedule();
-loadDarkMode();
-loadBookmarks();
-loadLastQuizState();
 startRotationWatcher();
 // Show continue card if there's history
 setTimeout(updateContinueCard, 100);
@@ -8722,7 +8720,8 @@ go('splash');
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
-           signOut, onAuthStateChanged, updateProfile, sendPasswordResetEmail }
+           signOut, onAuthStateChanged, updateProfile, sendPasswordResetEmail,
+           updatePassword, reauthenticateWithCredential, EmailAuthProvider }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
   import { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, where }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -8747,21 +8746,30 @@ go('splash');
     return doc(db, 'users', uid, parts[0], parts[1]);
   }
 
+  // Pure Firestore _fbSave — no localStorage at all
   window._fbSave = function(path, data) {
     var uid = auth.currentUser ? auth.currentUser.uid : (window.ME && window.ME.uid);
-    if(!uid) { console.warn('_fbSave: no uid, skipping', path); return; }
+    if(!uid) { console.warn('_fbSave: no uid, queuing', path); window._fbSaveQueue.push({path:path,data:data}); return; }
     var ref = userRef(uid, path);
     setDoc(ref, data, { merge: true }).catch(function(e){ console.error('Firestore save error:', path, e.message); });
   };
 
+  // Pure Firestore _fbLoad — reads directly from Firestore, no localStorage
   window._fbLoad = function(path, fallback, cb) {
     var uid = auth.currentUser ? auth.currentUser.uid : (window.ME && window.ME.uid);
     if(!uid) { if(fallback !== null) cb(fallback); return; }
     var ref = userRef(uid, path);
     getDoc(ref).then(function(snap) {
-      cb(snap.exists() ? snap.data() : fallback);
-    }).catch(function(e){ console.error('Firestore load error:', path, e.message); if(fallback !== null) cb(fallback); });
+      cb(snap.exists() ? snap.data() : (fallback !== undefined ? fallback : null));
+    }).catch(function(e){ console.error('Firestore load error:', path, e.message); if(fallback !== null && typeof cb === 'function') cb(fallback); });
   };
+
+  // Flush any queued saves that happened before Firebase was ready
+  function _flushSaveQueue() {
+    var q = window._fbSaveQueue || [];
+    window._fbSaveQueue = [];
+    q.forEach(function(item){ window._fbSave(item.path, item.data); });
+  }
 
   window._fbSetDoc = async function(path, data) {
     var parts = path.split('/');
@@ -8784,11 +8792,15 @@ go('splash');
       ['mock/history',           function(d){ if(d && d.history) window.mockHistory = d.history; }],
       ['quiz/last_state',        function(d){ if(d) { window._lastQuizState = d; } }],
       ['bookmarks/list',         function(d){ if(d && d.items) window.bookmarks = d.items; }],
-      ['referral/data',          function(d){ if(d) window.referralData = d; }],
+      ['referral/data',          function(d){ if(d && d.code) window.referralData = d; }],
       ['settings/notifications', function(d){ if(d) window.notificationSettings = d; }],
+      ['settings/preferences',   function(d){ if(d && typeof d.darkMode === 'boolean') { window._darkMode = d.darkMode; document.body.classList.toggle('dark', d.darkMode); document.querySelectorAll('.dm-toggle').forEach(function(b){ b.textContent = d.darkMode ? '☀️' : '🌙'; }); } }],
+      ['settings/ai_usage',      function(d){ /* loaded on-demand in getAIUsage() */ }],
       ['settings/mock',          function(d){ if(d) window.mockSettings = d; }],
       ['notifications/list',     function(d){ if(d && d.items) window.notifications = d.items; }],
       ['chat/log',               function(d){ if(d && d.log) window.chatLog = d.log; }],
+      ['payments/history',       function(d){ /* available on demand */ }],
+      ['contact/log',            function(d){ /* available on demand */ }],
     ];
     for(var i=0; i<paths.length; i++) {
       try {
@@ -8796,6 +8808,25 @@ go('splash');
         paths[i][1](snap.exists() ? snap.data() : null);
       } catch(e){ console.warn('Load error:', paths[i][0], e.message); }
     }
+    // Also load global/shared data
+    try {
+      var qSnap = await getDoc(doc(db, 'global', 'question_db'));
+      if(qSnap.exists() && qSnap.data().db) window.DB = qSnap.data().db;
+    } catch(e){ console.warn('Load error: global/question_db', e.message); }
+    try {
+      var mbSnap = await getDoc(doc(db, 'global', 'mock_banks'));
+      if(mbSnap.exists() && mbSnap.data().banks) window.MOCK_BANKS = mbSnap.data().banks;
+    } catch(e){ console.warn('Load error: global/mock_banks', e.message); }
+    try {
+      var msSnap = await getDoc(doc(db, 'global', 'mock_schedule'));
+      if(msSnap.exists()) window.mockSchedule = msSnap.data();
+    } catch(e){ console.warn('Load error: global/mock_schedule', e.message); }
+    try {
+      var cySnap = await getDoc(doc(db, 'global', 'custom_years'));
+      if(cySnap.exists() && cySnap.data().years) window.customYears = cySnap.data().years;
+    } catch(e){ console.warn('Load error: global/custom_years', e.message); }
+    // Flush any queued saves now that we have a valid UID
+    _flushSaveQueue();
   }
 
   // ── Auth state listener ──
@@ -8808,8 +8839,11 @@ go('splash');
         if(snap.exists()) {
           // Returning user — load everything from Firestore
           await loadAllUserData(user.uid);
-          if(window.updateContinueCard) window.updateContinueCard();
+          // Load per-session data
+          if(window.loadAIUsage) window.loadAIUsage();
           if(window.renderChat) window.renderChat();
+          if(window.updateContinueCard) window.updateContinueCard();
+          if(window.renderYGrid) window.renderYGrid();
           if(window.go) window.go('main');
         } else if(window.ME && (window.ME.uid === user.uid || !window.ME.uid)) {
           // Brand new user — save their profile (just created by doVerify)
@@ -8884,6 +8918,15 @@ go('splash');
     } catch(e) { console.warn('Username index error:', e); }
   };
   window._fbSendPasswordReset = function(email) { return sendPasswordResetEmail(auth, email); };
+
+  // Change password via Firebase Auth (reauthenticate first, then update)
+  window._fbChangePassword = async function(currentPassword, newPassword) {
+    var user = auth.currentUser;
+    if(!user) throw new Error('Not signed in');
+    var credential = EmailAuthProvider.credential(user.email, currentPassword);
+    await reauthenticateWithCredential(user, credential);
+    await updatePassword(user, newPassword);
+  };
 
   var logoutEl = document.getElementById('logout-btn-fb');
   if(logoutEl) logoutEl.addEventListener('click', function(){ window._fbSignOut(); });
