@@ -244,6 +244,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--g)}
 
 /* Home */
 .greet{background:linear-gradient(135deg,var(--g),var(--gd));border-radius:20px;padding:22px;margin-bottom:18px;position:relative;overflow:hidden}
+/* Fast-login background loading bar */
+#load-bar{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--gl),var(--gold));z-index:9999;transition:width .4s ease,opacity .5s;width:0%;opacity:0;pointer-events:none}
+#load-bar.active{opacity:1}
 .greet::after{content:'🏥';position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:56px;opacity:.1;pointer-events:none}
 .greet-name{font-family:'Playfair Display',serif;font-size:22px;color:#fff}
 .greet-sch{color:rgba(255,255,255,.7);font-size:13px;margin-top:3px}
@@ -1610,6 +1613,7 @@ function loadDarkMode() {
 <div id="app">
 
 <!-- ========== SPLASH ========== -->
+<div id="load-bar"></div>
 <div id="pg-splash" class="pg on">
   <button class="dm-toggle" id="dm-btn-splash" onclick="toggleDarkMode()" title="Toggle dark mode">🌙</button>
   <div class="logo">Nurse<b>Prep</b></div>
@@ -3340,7 +3344,7 @@ service cloud.firestore {
 
     <!-- Action buttons -->
     <div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">
-      <button class="btn" style="width:100%;background:linear-gradient(135deg,#1E1B4B,#312E81);color:#C4B5FD;border:1.5px solid #312E81" onclick="go('mock-answer-review')">📋 Review All Answers</button>
+      <button class="btn" style="width:100%;background:linear-gradient(135deg,#1E1B4B,#312E81);color:#C4B5FD;border:1.5px solid #312E81" onclick="_rmSource='result';_rmIdx=0;go('mock-answer-review')">📖 Read Mode — All Questions</button>
       <button class="btn" style="width:100%;background:linear-gradient(135deg,var(--goldd),var(--gold));color:var(--gd)" onclick="showMockCertificate()">🏅 Share Certificate</button>
       <button class="btn btn-green" style="width:100%" onclick="go('main',true)">Back to Home</button>
     </div>
@@ -3350,19 +3354,59 @@ service cloud.firestore {
 <!-- ========== MOCK ANSWER REVIEW ========== -->
 <div id="pg-mock-answer-review" class="pg">
   <div style="min-height:100vh;background:#0D1117;display:flex;flex-direction:column">
-    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #1F2937;position:sticky;top:0;background:#0D1117;z-index:10">
-      <button class="bk" onclick="go('mock-result',true)" style="background:#1F2937;color:#9CA3AF">←</button>
-      <div><div style="font-family:'Playfair Display',serif;font-size:17px;color:#F9FAFB">Answer Review</div><div style="font-size:12px;color:#6B7280" id="mock-ar-sub">All questions</div></div>
+
+    <!-- Top bar -->
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #1F2937;position:sticky;top:0;background:#0D1117;z-index:10;flex-shrink:0">
+      <button class="bk" onclick="readModeBack()" style="background:#1F2937;color:#9CA3AF">←</button>
+      <div style="flex:1">
+        <div style="font-family:'Playfair Display',serif;font-size:17px;color:#F9FAFB">Read Mode</div>
+        <div style="font-size:12px;color:#6B7280" id="mock-ar-sub">All questions</div>
+      </div>
+      <!-- Q counter -->
+      <div style="background:#1F2937;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;color:#9CA3AF">
+        <span id="rm-q-cur">1</span> / <span id="rm-q-tot">1</span>
+      </div>
     </div>
-    <!-- Filter chips -->
-    <div style="display:flex;gap:6px;padding:12px 16px;background:#111827;border-bottom:1px solid #1F2937;overflow-x:auto">
-      <button class="fchip on" onclick="filterMockReview('all',this)" style="background:#374151;color:#D1D5DB;border-color:#4B5563;font-size:12px">All</button>
-      <button class="fchip" onclick="filterMockReview('wrong',this)" style="background:#1F2937;color:#F87171;border-color:#EF4444;font-size:12px">✗ Wrong</button>
-      <button class="fchip" onclick="filterMockReview('correct',this)" style="background:#1F2937;color:#34D399;border-color:#059669;font-size:12px">✓ Correct</button>
-      <button class="fchip" onclick="filterMockReview('unanswered',this)" style="background:#1F2937;color:#FBBF24;border-color:#D97706;font-size:12px">— Unanswered</button>
-      <button class="fchip" onclick="filterMockReview('flagged',this)" style="background:#1F2937;color:#FCD34D;border-color:#D97706;font-size:12px">🚩 Flagged</button>
+
+    <!-- Progress bar -->
+    <div style="height:3px;background:#1F2937;flex-shrink:0">
+      <div id="rm-progress" style="height:100%;background:linear-gradient(90deg,#6366F1,#8B5CF6);transition:width .3s;width:0%"></div>
     </div>
-    <div id="mock-answer-review-body" style="flex:1;overflow-y:auto;padding:12px 16px 40px"></div>
+
+    <!-- Question card (scrollable) -->
+    <div style="flex:1;overflow-y:auto;padding:16px 16px 100px" id="rm-scroll">
+
+      <!-- Q number + flag -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:11px;font-weight:700;color:#6B7280;letter-spacing:1px;text-transform:uppercase" id="rm-qnum">Question 1</span>
+        <span id="rm-correct-badge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(16,185,129,.12);color:#34D399;border:1px solid rgba(16,185,129,.3)">✓ Correct Answer Shown</span>
+      </div>
+
+      <!-- Question text -->
+      <div id="rm-qtxt" style="font-size:16px;font-weight:500;color:#F9FAFB;line-height:1.75;margin-bottom:20px"></div>
+
+      <!-- Options -->
+      <div id="rm-opts" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px"></div>
+
+      <!-- Explanation -->
+      <div id="rm-expl" style="background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.25);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:none">
+        <div style="font-size:11px;font-weight:700;color:#818CF8;letter-spacing:1px;margin-bottom:6px;text-transform:uppercase">💡 Explanation</div>
+        <div id="rm-expl-txt" style="font-size:13px;color:#D1D5DB;line-height:1.7"></div>
+      </div>
+
+      <!-- Ask AI button -->
+      <button id="rm-ai-btn" onclick="readModeAskAI()" style="width:100%;padding:13px;border-radius:12px;border:1.5px solid rgba(99,102,241,.4);background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(139,92,246,.1));color:#A5B4FC;font-family:'DM Sans';font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s">
+        ✦ Ask AI Tutor About This Question
+      </button>
+
+    </div>
+
+    <!-- Bottom nav -->
+    <div style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:#111827;border-top:1px solid #1F2937;padding:12px 16px;display:flex;gap:10px;z-index:20">
+      <button id="rm-prev" onclick="readModeNav(-1)" style="flex:1;padding:12px;border-radius:10px;background:#1F2937;border:none;color:#9CA3AF;font-family:'DM Sans';font-size:14px;font-weight:700;cursor:pointer;transition:all .2s" disabled>← Prev</button>
+      <button id="rm-next" onclick="readModeNav(1)" style="flex:1;padding:12px;border-radius:10px;background:#6366F1;border:none;color:#fff;font-family:'DM Sans';font-size:14px;font-weight:700;cursor:pointer;transition:all .2s">Next →</button>
+    </div>
+
   </div>
 </div>
 
@@ -3894,7 +3938,7 @@ function go(page, isBack) {
   if (page === 'payment') { prepPaymentPage(); }
   if (page === 'exam-review') { renderExamReview(); }
   if (page === 'mock-lobby') { renderMockLobby(); }
-  if (page === 'mock-answer-review') { renderMockAnswerReview('all'); }
+  if (page === 'mock-answer-review') { _rmIdx = 0; renderReadModeQ(); }
   if (page === 'admin') { renderCodesTab(); updateAdminSt(); renderAdminAnalytics(); renderAdminMockTab(); populateYearDropdowns(); renderYearsTab(); }
   if (page === 'referral') { renderReferralPage(); }
   if (page === 'bookmarks') { renderBookmarks(); }
@@ -6453,53 +6497,146 @@ function renderMockResult(correct, wrong, unanswered, pct, passed, timeTaken) {
 
 // ---- ANSWER REVIEW ----
 var _mockReviewFilter='all';
+// =========================================================
+// READ MODE — one-question-at-a-time reader with AI
+// =========================================================
+var _rmIdx = 0;     // current question index in read mode
+var _rmSource = 'result'; // where the back button should go: 'result' | 'archive'
+
 function renderMockAnswerReview(filter) {
-  _mockReviewFilter=filter;
-  var sub=document.getElementById('mock-ar-sub');
-  var body=document.getElementById('mock-answer-review-body'); if(!body) return;
-  var qs=MX.questions; var ans=MX.answers; var flags=MX.flags;
-  var items=qs.map(function(q,i){ return { q:q, chosen:ans[i], flagged:flags[i], idx:i }; });
-  if(filter==='wrong') items=items.filter(function(it){ return it.chosen!==-1&&it.chosen!==it.q.c; });
-  else if(filter==='correct') items=items.filter(function(it){ return it.chosen===it.q.c; });
-  else if(filter==='unanswered') items=items.filter(function(it){ return it.chosen===-1; });
-  else if(filter==='flagged') items=items.filter(function(it){ return it.flagged; });
-  if(sub) sub.textContent=items.length+' question'+(items.length!==1?'s':'')+(filter!=='all'?' · '+filter:'');
-  if(items.length===0){ body.innerHTML='<div style="text-align:center;padding:40px;color:#6B7280"><div style="font-size:48px;margin-bottom:12px">🎉</div><div>No questions in this category.</div></div>'; return; }
-  var letters=['A','B','C','D'];
-  body.innerHTML=items.map(function(it){
-    var q=it.q; var chosen=it.chosen;
-    var isRight=chosen===q.c; var isUnans=chosen===-1;
-    var badge=isUnans?'<span style="color:#FBBF24;font-size:11px;font-weight:700">— UNANSWERED</span>':isRight?'<span style="color:#34D399;font-size:11px;font-weight:700">✓ CORRECT</span>':'<span style="color:#F87171;font-size:11px;font-weight:700">✗ INCORRECT</span>';
-    var flagBadge=it.flagged?'<span style="color:#FCD34D;font-size:11px;margin-left:6px">🚩</span>':'';
-    return '<div class="mock-review-item" style="background:'+(isUnans?'rgba(251,191,36,.04)':isRight?'rgba(16,185,129,.04)':'rgba(239,68,68,.04)')+';border-bottom:1px solid #1F2937">'+
-      '<div class="mock-review-item-top">'+
-      '<div class="mock-review-item-num">Q'+(it.idx+1)+'</div>'+
-      '<div style="flex:1"><div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'+badge+flagBadge+'</div><div class="mock-review-item-q">'+q.q+'</div></div>'+
-      '</div>'+
-      '<div class="mock-review-opts">'+
-      q.o.map(function(opt,oi){
-        var isCorrectOpt=oi===q.c; var isChosenOpt=oi===chosen;
-        var cls='mock-review-opt '; var prefix='';
-        if(isCorrectOpt){ cls+='cor'; prefix='✓ '; }
-        else if(isChosenOpt&&!isRight){ cls+='wrg'; prefix='✗ '; }
-        else { cls+='neu'; }
-        var notes='';
-        if(isChosenOpt&&!isRight) notes=' <span style="opacity:.7;font-size:11px">(your answer)</span>';
-        if(isCorrectOpt&&isRight) notes=' <span style="opacity:.7;font-size:11px">(your answer ✓)</span>';
-        if(isCorrectOpt&&!isRight) notes=' <span style="opacity:.7;font-size:11px">(correct)</span>';
-        return '<div class="'+cls+'"><strong>'+letters[oi]+'.</strong> '+opt+notes+'</div>';
-      }).join('')+
-      '</div>'+
-      (isUnans?'':'<div class="mock-review-expl">💡 '+q.e+'</div>')+
-      '</div>';
-  }).join('');
+  // filter param kept for compatibility — ignored in read mode
+  _rmIdx = 0;
+  renderReadModeQ();
 }
 
-function filterMockReview(filter, btn) {
-  document.querySelectorAll('#pg-mock-answer-review .fchip').forEach(function(b){ b.classList.remove('on'); b.style.background='#1F2937'; });
-  btn.classList.add('on'); btn.style.background='#374151';
-  renderMockAnswerReview(filter);
+function readModeBack() {
+  if(_rmSource === 'archive') {
+    go('main');
+    // Switch to questions tab
+    setTimeout(function() {
+      var qtab = document.getElementById('tab-questions');
+      var htab = document.getElementById('tab-home');
+      var nav = document.querySelectorAll('.ni');
+      if(qtab) {
+        document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('on'); });
+        qtab.classList.add('on');
+        nav.forEach(function(n){ n.classList.remove('on'); });
+        var qni = document.querySelector('.ni[onclick*="questions"]');
+        if(qni) qni.classList.add('on');
+      }
+    }, 50);
+  } else {
+    go('mock-result', true);
+  }
 }
+
+function renderReadModeQ() {
+  var qs = MX.questions;
+  if(!qs || qs.length === 0) return;
+  if(_rmIdx < 0) _rmIdx = 0;
+  if(_rmIdx >= qs.length) _rmIdx = qs.length - 1;
+
+  var q = qs[_rmIdx];
+  var letters = ['A','B','C','D'];
+  var tot = qs.length;
+
+  // Update counter + progress
+  var cur = document.getElementById('rm-q-cur'); if(cur) cur.textContent = _rmIdx + 1;
+  var totEl = document.getElementById('rm-q-tot'); if(totEl) totEl.textContent = tot;
+  var prog = document.getElementById('rm-progress'); if(prog) prog.style.width = ((_rmIdx + 1) / tot * 100) + '%';
+
+  // Q number label
+  var qnum = document.getElementById('rm-qnum'); if(qnum) qnum.textContent = 'Question ' + (_rmIdx + 1);
+
+  // Question text
+  var qtxt = document.getElementById('rm-qtxt'); if(qtxt) qtxt.textContent = q.q;
+
+  // Options
+  var optsEl = document.getElementById('rm-opts');
+  if(optsEl) {
+    optsEl.innerHTML = q.o.map(function(opt, oi) {
+      var isCorrect = oi === q.c;
+      var style = isCorrect
+        ? 'background:rgba(16,185,129,.12);border:1.5px solid rgba(16,185,129,.4);color:#34D399;'
+        : 'background:#111827;border:1.5px solid #374151;color:#9CA3AF;';
+      var prefix = isCorrect ? '✓ ' : '';
+      return '<div style="' + style + 'border-radius:11px;padding:12px 15px;font-size:14px;display:flex;align-items:center;gap:10px">' +
+        '<span style="width:26px;height:26px;border-radius:50%;background:' + (isCorrect ? 'rgba(16,185,129,.25)' : '#1F2937') + ';display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;color:' + (isCorrect ? '#34D399' : '#6B7280') + '">' + letters[oi] + '</span>' +
+        '<span>' + prefix + opt + '</span>' +
+        '</div>';
+    }).join('');
+  }
+
+  // Explanation
+  var explWrap = document.getElementById('rm-expl');
+  var explTxt = document.getElementById('rm-expl-txt');
+  if(q.e && q.e.trim()) {
+    if(explTxt) explTxt.textContent = q.e;
+    if(explWrap) explWrap.style.display = 'block';
+  } else {
+    if(explWrap) explWrap.style.display = 'none';
+  }
+
+  // Nav buttons
+  var prev = document.getElementById('rm-prev'); if(prev) prev.disabled = (_rmIdx === 0);
+  var next = document.getElementById('rm-next');
+  if(next) {
+    if(_rmIdx === tot - 1) {
+      next.textContent = '✓ Done';
+      next.style.background = '#059669';
+    } else {
+      next.textContent = 'Next →';
+      next.style.background = '#6366F1';
+    }
+  }
+
+  // Scroll to top of card
+  var scr = document.getElementById('rm-scroll'); if(scr) scr.scrollTop = 0;
+
+  // Update sub label
+  var sub = document.getElementById('mock-ar-sub');
+  if(sub && sub.textContent.indexOf('questions') === -1) {
+    sub.textContent = tot + ' questions';
+  }
+}
+
+function readModeNav(dir) {
+  var qs = MX.questions;
+  if(!qs) return;
+  if(dir === 1 && _rmIdx >= qs.length - 1) {
+    // Done — go back
+    readModeBack();
+    return;
+  }
+  _rmIdx += dir;
+  renderReadModeQ();
+}
+
+function readModeAskAI() {
+  var qs = MX.questions;
+  if(!qs || qs.length === 0) return;
+  var q = qs[_rmIdx];
+  _aiCurrentQ = q;
+
+  var usage = getAIUsage();
+  if(!isPro && usage.count >= AI_FREE_LIMIT) { showAIGate(); return; }
+
+  document.getElementById('ai-modal-overlay').classList.add('show');
+  var titleEl = document.querySelector('.ai-sheet-hdr-title');
+  if(titleEl) titleEl.textContent = (window._launchingBankType === 'hosp') ? 'Hospital AI Tutor' : 'AI Tutor';
+  var recap = document.getElementById('ai-q-recap');
+  if(recap) { recap.style.display = ''; recap.textContent = '"' + q.q.substring(0, 120) + (q.q.length > 120 ? '…' : '') + '"'; }
+  var depthRow = document.getElementById('ai-depth-row');
+  if(depthRow) depthRow.style.display = '';
+  var resp = document.getElementById('ai-response');
+  var loading = document.getElementById('ai-loading');
+  if(resp) { resp.style.display = 'none'; resp.innerHTML = ''; }
+  if(loading) loading.style.display = 'flex';
+  setAIDepthActive('simple');
+  fetchAIExplanation(q, AI_DEPTH);
+}
+
+
 
 // =========================================================
 // MOCK EXAM — PERFORMANCE ANALYTICS (add mock to history)
@@ -8285,7 +8422,7 @@ function _buildBankCardsHtml(banks, history, activeIdx, locked, type) {
       histHtml + lockedNote +
       '<div class="stu-bank-actions">' +
         '<button class="stu-bank-btn-take" onclick="' + takeFn + '(\'' + bid + '\')">' + takeLabel + '</button>' +
-        '<button class="stu-bank-btn-review" onclick="launchBankReview(\'' + bid + '\',\'' + type + '\')"' + (!hasQs ? ' disabled' : '') + '>\uD83D\uDCCB Review</button>' +
+        '<button class="stu-bank-btn-review" onclick="launchBankReview(\'' + bid + '\',\'' + type + '\')"' + (!hasQs ? ' disabled' : '') + '>📖 Read</button>' +
       '</div>' +
     '</div>';
   }).join('');
@@ -8352,11 +8489,14 @@ function launchBankReview(bankId, type) {
   MX.answers = bank.questions.map(function() { return -1; });
   MX.flags = bank.questions.map(function() { return false; });
   MX.active = false;
+  _rmSource = 'archive';
+  window._launchingBankType = type || 'mock';
   go('mock-answer-review');
   setTimeout(function() {
-    renderMockAnswerReview('all');
+    _rmIdx = 0;
+    renderReadModeQ();
     var sub = document.getElementById('mock-ar-sub');
-    if (sub) sub.textContent = bank.questions.length + ' questions \u00b7 ' + (bank.title || 'Review Mode');
+    if (sub) sub.textContent = bank.questions.length + ' questions \u00b7 ' + (bank.title || 'Read Mode');
   }, 60);
 }
 
@@ -9063,16 +9203,23 @@ function fetchAIExplanation(q, depth) {
   startLoadingCycle();
   var prompt = buildAIPrompt(q, depth);
 
-  fetch('https://api.anthropic.com/v1/messages', {
+  fetch('https://sweet-block-339b.elixy.workers.dev', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': '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', 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': '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',
+      'anthropic-version': '2023-06-01'
+    },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 600,
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 700,
       messages: [{ role: 'user', content: prompt }]
     })
   })
-  .then(function(r) { return r.json(); })
+  .then(function(r) {
+    if(!r.ok) return r.json().then(function(e){ throw new Error((e.error && e.error.message) || ('HTTP ' + r.status)); });
+    return r.json();
+  })
   .then(function(data) {
     stopLoadingCycle();
     var text = '';
@@ -9085,31 +9232,25 @@ function fetchAIExplanation(q, depth) {
     }
     _lastAIText = text;
     incrementAIUsage();
-
     var loading = document.getElementById('ai-loading');
     var resp = document.getElementById('ai-response');
     if(loading) loading.style.display = 'none';
-    if(resp) {
-      resp.style.display = 'block';
-      resp.innerHTML = formatAIResponse(text, depth, q);
-    }
+    if(resp) { resp.style.display = 'block'; resp.innerHTML = formatAIResponse(text, depth, q); }
   })
   .catch(function(err) {
     stopLoadingCycle();
+    console.error('AI fetch error:', err);
     var loading = document.getElementById('ai-loading');
     var resp = document.getElementById('ai-response');
     if(loading) loading.style.display = 'none';
     if(resp) {
       resp.style.display = 'block';
-      // Show friendly error with fallback explanation
-      var fallback = q.e ? '<div style="margin-top:12px;font-size:13px;line-height:1.6;color:var(--tx)"><strong>Written explanation:</strong><br>' + q.e + '</div>' : '';
+      var fallback = q.e ? '<div style="margin-top:14px;padding:12px 14px;background:rgba(255,255,255,.04);border-radius:10px;font-size:13px;line-height:1.7;color:#D1D5DB"><strong style="color:#9CA3AF">Written explanation:</strong><br>' + q.e + '</div>' : '';
       resp.innerHTML =
         '<div class="ai-error">' +
           '<div style="font-size:24px;margin-bottom:8px">⚡</div>' +
-          '<strong>AI temporarily unavailable</strong><br>' +
-          '<span style="font-size:12px;color:var(--mt);display:block;margin-top:4px">' +
-            'To enable AI explanations, add your Anthropic API key to the app backend.' +
-          '</span>' +
+          '<strong>AI temporarily unavailable</strong>' +
+          '<span style="font-size:11px;color:#6B7280;display:block;margin-top:6px">' + (err.message || 'Network error') + '</span>' +
         '</div>' +
         fallback +
         '<div class="ai-action-row"><button class="ai-action-btn" onclick="regenerateAI()">↺ Try again</button></div>';
@@ -9259,6 +9400,7 @@ go('splash');
 
   // ── Load all user data from Firestore ──
   async function loadAllUserData(uid) {
+    // ── 1. Fire ALL user data reads + ALL global reads in parallel ──
     var paths = [
       ['profile/data',           function(d){ if(d){ window.ME = d; window.ME.uid = uid; window.isPro = d.isPro||false; window.accounts=[d]; } }],
       ['performance/history',    function(d){ if(d && d.history) window.quizHistory = d.history; }],
@@ -9268,84 +9410,87 @@ go('splash');
       ['referral/data',          function(d){ if(d && d.code) window.referralData = d; }],
       ['settings/notifications', function(d){ if(d) window.notificationSettings = d; }],
       ['settings/preferences',   function(d){ if(d && typeof d.darkMode === 'boolean') { window._darkMode = d.darkMode; document.body.classList.toggle('dark', d.darkMode); document.querySelectorAll('.dm-toggle').forEach(function(b){ b.textContent = d.darkMode ? '☀️' : '🌙'; }); } }],
-      ['settings/ai_usage',      function(d){ /* loaded on-demand in getAIUsage() */ }],
+      ['settings/ai_usage',      function(d){ /* loaded on-demand */ }],
       ['settings/mock',          function(d){ if(d) window.mockSettings = d; }],
       ['notifications/list',     function(d){ if(d && d.items) window.notifications = d.items; }],
       ['chat/log',               function(d){ if(d && d.log) window.chatLog = d.log; }],
-      ['payments/history',       function(d){ /* available on demand */ }],
-      ['contact/log',            function(d){ /* available on demand */ }],
+      ['payments/history',       function(d){ /* on demand */ }],
+      ['contact/log',            function(d){ /* on demand */ }],
     ];
-    for(var i=0; i<paths.length; i++) {
-      try {
-        var snap = await getDoc(userRef(uid, paths[i][0]));
-        paths[i][1](snap.exists() ? snap.data() : null);
-      } catch(e){ console.warn('Load error:', paths[i][0], e.message); }
-    }
-    // ── Load global/shared data (question bank, mock banks, schedule) ──
-    // Question DB: read index doc, then fetch each year/paper subcollection doc
+
+    // Fire all user reads at once
+    var userReads = paths.map(function(p) {
+      return getDoc(userRef(uid, p[0])).then(function(snap) {
+        try { p[1](snap.exists() ? snap.data() : null); } catch(e){}
+      }).catch(function(e){ console.warn('Load error:', p[0], e.message); });
+    });
+
+    // Fire all global meta reads at once alongside user reads
+    var qMetaPromise   = getDoc(doc(db, 'global', 'question_db')).catch(function(){ return null; });
+    var mbMetaPromise  = getDoc(doc(db, 'global', 'mock_banks')).catch(function(){ return null; });
+    var msPromise      = getDoc(doc(db, 'global', 'mock_schedule')).catch(function(){ return null; });
+    var cyPromise      = getDoc(doc(db, 'global', 'custom_years')).catch(function(){ return null; });
+    var mdbPromise     = getDoc(doc(db, 'global', 'mock_db')).catch(function(){ return null; });
+
+    // Wait for all user reads + global meta reads together
+    var results = await Promise.all(userReads.concat([qMetaPromise, mbMetaPromise, msPromise, cyPromise, mdbPromise]));
+    var qMetaSnap  = results[paths.length];
+    var mbMetaSnap = results[paths.length + 1];
+    var msSnap     = results[paths.length + 2];
+    var cySnap     = results[paths.length + 3];
+    var mdbSnap    = results[paths.length + 4];
+
+    // Apply simple global results immediately
+    try { if(msSnap  && msSnap.exists())  window.mockSchedule = msSnap.data(); } catch(e){}
+    try { if(cySnap  && cySnap.exists() && cySnap.data().years) window.customYears = cySnap.data().years; } catch(e){}
+    try { if(mdbSnap && mdbSnap.exists() && mdbSnap.data().questions) window.MOCK_DB = mdbSnap.data().questions; } catch(e){}
+
+    // ── 2. Fire all sub-document reads in parallel (question years + mock banks) ──
+    var subReads = [];
+
+    // Question DB sub-reads
     try {
-      var qMeta = await getDoc(doc(db, 'global', 'question_db'));
-      if(qMeta.exists() && qMeta.data().index) {
-        var qIndex = qMeta.data().index;
+      if(qMetaSnap && qMetaSnap.exists() && qMetaSnap.data().index) {
+        var qIndex = qMetaSnap.data().index;
         var qYears = Object.keys(qIndex);
         if(qYears.length > 0) {
           window.DB = {};
-          var qTotal = 0;
-          qYears.forEach(function(yr) { qTotal += (qIndex[yr]||[]).length; });
-          var qLoaded = 0;
-          for(var yi=0; yi<qYears.length; yi++) {
-            var yr = qYears[yi];
-            window.DB[yr] = {};
-            var papers = qIndex[yr] || [];
-            for(var pi=0; pi<papers.length; pi++) {
-              var paper = papers[pi];
+          qYears.forEach(function(yr) { window.DB[yr] = {}; });
+          qYears.forEach(function(yr) {
+            (qIndex[yr] || []).forEach(function(paper) {
               var key = yr + '_' + paper.replace(/\s+/g, '_');
-              try {
-                var pSnap = await getDoc(doc(db, 'global', 'question_db', 'years', key));
-                if(pSnap.exists() && pSnap.data().questions) {
-                  window.DB[yr][paper] = pSnap.data().questions;
-                }
-              } catch(pe){ console.warn('Load error: question_db year ' + key, pe.message); }
-              qLoaded++;
-            }
-          }
+              subReads.push(
+                getDoc(doc(db, 'global', 'question_db', 'years', key)).then(function(pSnap) {
+                  if(pSnap.exists() && pSnap.data().questions) window.DB[yr][paper] = pSnap.data().questions;
+                }).catch(function(e){ console.warn('Load error: question_db year ' + key, e.message); })
+              );
+            });
+          });
         }
       }
     } catch(e){ console.warn('Load error: global/question_db', e.message); }
 
-    // Mock banks: read index, then fetch each bank subcollection doc
+    // Mock banks sub-reads
     try {
-      var mbMeta = await getDoc(doc(db, 'global', 'mock_banks'));
-      if(mbMeta.exists() && mbMeta.data().index && mbMeta.data().index.length > 0) {
-        var mbIndex = mbMeta.data().index;
-        window.MOCK_BANKS = [];
-        for(var bi=0; bi<mbIndex.length; bi++) {
-          var entry = mbIndex[bi];
-          try {
-            var bSnap = await getDoc(doc(db, 'global', 'mock_banks', 'banks', entry.id));
-            window.MOCK_BANKS.push(bSnap.exists() ? bSnap.data() : entry);
-          } catch(be){ console.warn('Load error: mock_banks bank ' + entry.id, be.message); window.MOCK_BANKS.push(entry); }
-        }
+      if(mbMetaSnap && mbMetaSnap.exists() && mbMetaSnap.data().index && mbMetaSnap.data().index.length > 0) {
+        var mbIndex = mbMetaSnap.data().index;
+        window.MOCK_BANKS = new Array(mbIndex.length).fill(null);
+        mbIndex.forEach(function(entry, bi) {
+          subReads.push(
+            getDoc(doc(db, 'global', 'mock_banks', 'banks', entry.id)).then(function(bSnap) {
+              window.MOCK_BANKS[bi] = bSnap.exists() ? bSnap.data() : entry;
+            }).catch(function(e){ window.MOCK_BANKS[bi] = entry; })
+          );
+        });
       }
     } catch(e){ console.warn('Load error: global/mock_banks', e.message); }
 
-    // Mock schedule and custom years
-    try {
-      var msSnap = await getDoc(doc(db, 'global', 'mock_schedule'));
-      if(msSnap.exists()) window.mockSchedule = msSnap.data();
-    } catch(e){ console.warn('Load error: global/mock_schedule', e.message); }
-    try {
-      var cySnap = await getDoc(doc(db, 'global', 'custom_years'));
-      if(cySnap.exists() && cySnap.data().years) window.customYears = cySnap.data().years;
-    } catch(e){ console.warn('Load error: global/custom_years', e.message); }
+    // Wait for all sub-reads in parallel
+    if(subReads.length > 0) await Promise.all(subReads);
 
-    // Mock DB (active questions for current exam)
-    try {
-      var mdbSnap = await getDoc(doc(db, 'global', 'mock_db'));
-      if(mdbSnap.exists() && mdbSnap.data().questions) window.MOCK_DB = mdbSnap.data().questions;
-    } catch(e){ console.warn('Load error: global/mock_db', e.message); }
+    // Clean up any nulls from mock banks array
+    window.MOCK_BANKS = (window.MOCK_BANKS || []).filter(Boolean);
 
-    // Flush any saves that were queued before Firebase was ready
     _flushSaveQueue();
   }
 
@@ -9363,19 +9508,35 @@ go('splash');
         var snap = await getDoc(profileRef);
 
         if(snap.exists()) {
-          // Returning user — load everything from Firestore (user data + global data)
-          await loadAllUserData(user.uid);
-          // Load per-session caches
-          if(window.loadAIUsage) window.loadAIUsage();
-          // Refresh UI now that all data is loaded
-          if(window.renderYGrid) window.renderYGrid();
-          if(window.renderStudentBankArchive) window.renderStudentBankArchive();
+          // Apply profile immediately so the UI can render right away
+          var profileData = snap.data();
+          window.ME = profileData; window.ME.uid = user.uid;
+          window.isPro = profileData.isPro || false;
+          window.accounts = [profileData];
+          // Apply dark mode preference if stored in profile
+          if(typeof profileData.darkMode === 'boolean') {
+            document.body.classList.toggle('dark', profileData.darkMode);
+            document.querySelectorAll('.dm-toggle').forEach(function(b){ b.textContent = profileData.darkMode ? '☀️' : '🌙'; });
+          }
+          // ↓ Navigate instantly — don't wait for all data
           if(window.updateHomeUI) window.updateHomeUI();
           if(window.updateProfUI) window.updateProfUI();
-          if(window.renderChat) window.renderChat();
-          if(window.updateContinueCard) window.updateContinueCard();
-          if(window.updateMockHomeCard) window.updateMockHomeCard();
           if(window.go) window.go('main');
+          // Show subtle progress bar while background data loads
+          var lb = document.getElementById('load-bar');
+          if(lb){ lb.style.width='30%'; lb.classList.add('active'); }
+          // Load everything else in the background
+          loadAllUserData(user.uid).then(function() {
+            if(lb){ lb.style.width='100%'; setTimeout(function(){ lb.classList.remove('active'); lb.style.width='0%'; }, 500); }
+            if(window.loadAIUsage) window.loadAIUsage();
+            if(window.renderYGrid) window.renderYGrid();
+            if(window.renderStudentBankArchive) window.renderStudentBankArchive();
+            if(window.updateHomeUI) window.updateHomeUI();
+            if(window.updateProfUI) window.updateProfUI();
+            if(window.renderChat) window.renderChat();
+            if(window.updateContinueCard) window.updateContinueCard();
+            if(window.updateMockHomeCard) window.updateMockHomeCard();
+          });
         } else if(window.ME && (window.ME.uid === user.uid || !window.ME.uid)) {
           // Brand new user — save their profile (just created by doVerify)
           window.ME.uid = user.uid;
