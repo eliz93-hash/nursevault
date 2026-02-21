@@ -239,6 +239,23 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--g)}
 .ni-lbl{font-size:10px;font-weight:600;color:var(--mt)}
 .ni.on .ni-lbl{color:var(--g)}
 .ni.on .ni-ico{transform:scale(1.1)}
+
+/* === UNREAD DM BADGE === */
+.ni-wrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px}
+.ni-badge{position:absolute;top:-4px;right:-6px;min-width:16px;height:16px;border-radius:8px;background:var(--red);color:#fff;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 3px;pointer-events:none;animation:badgePop .3s cubic-bezier(.175,.885,.32,1.275)}
+@keyframes badgePop{from{transform:scale(0)}to{transform:scale(1)}}
+
+/* === DM NOTIFICATION TOAST === */
+.dm-notif-toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:9500;background:#fff;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.18);padding:12px 16px;display:flex;align-items:center;gap:12px;max-width:360px;width:calc(100% - 40px);cursor:pointer;animation:toastIn .35s cubic-bezier(.4,0,.2,1);border-left:4px solid var(--g)}
+@keyframes toastIn{from{transform:translateX(-50%) translateY(20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+.dm-notif-av{width:38px;height:38px;border-radius:50%;background:var(--g);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+.dm-notif-av img{width:100%;height:100%;object-fit:cover}
+.dm-notif-body{flex:1;min-width:0}
+.dm-notif-name{font-weight:700;font-size:13px;color:var(--tx)}
+.dm-notif-msg{font-size:12px;color:var(--mt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dm-notif-time{font-size:10px;color:var(--mt);flex-shrink:0}
+body.dark .dm-notif-toast{background:#1a2920;border-left-color:var(--gl)}
+body.dark .dm-notif-name{color:#e2ede8}
 .tab{display:none;padding:20px 16px 20px}
 .tab.on{display:block}
 
@@ -2060,7 +2077,7 @@ function loadDarkMode() {
   <div class="bnav">
     <div class="ni on" onclick="switchTab('home',this)"><div class="ni-ico">🏠</div><div class="ni-lbl">Home</div></div>
     <div class="ni" onclick="switchTab('questions',this)"><div class="ni-ico">📋</div><div class="ni-lbl">Questions</div></div>
-    <div class="ni" onclick="switchTab('chat',this)"><div class="ni-ico">💬</div><div class="ni-lbl">Class</div></div>
+    <div class="ni" id="nav-chat" onclick="switchTab('chat',this)"><div class="ni-wrap"><div class="ni-ico">💬</div><span class="ni-badge" id="chat-unread-badge" style="display:none">0</span></div><div class="ni-lbl">Class</div></div>
     <div class="ni" onclick="switchTab('profile',this)"><div class="ni-ico">👤</div><div class="ni-lbl">Profile</div></div>
   </div>
 </div>
@@ -4641,8 +4658,9 @@ function updateAdminSt() {
     var totalCor = a.totalCor||0;
     var avgScore = totalAns>0?Math.round(totalCor/totalAns*100)+'%':'—';
     
+    var sid = a.id;
     return '<div class="user-perf-card">'+
-      '<div class="user-perf-hd" onclick="toggleStudentPerf('sp-'+a.id+'')">'+
+      '<div class="user-perf-hd" onclick="toggleStudentPerf(&quot;sp-'+sid+'&quot;)">'+
         '<div class="sav-av" style="position:relative">'+av+
           '<span style="position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;border:2px solid #fff;background:'+(online?'#22c55e':'#94a3b8')+'"></span>'+
         '</div>'+
@@ -4656,7 +4674,7 @@ function updateAdminSt() {
         '</div>'+
         '<span style="color:var(--mt)">›</span>'+
       '</div>'+
-      '<div id="sp-'+a.id+'" class="user-perf-body">'+
+      '<div id="sp-'+sid+'" class="user-perf-body">'+
         '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">'+
           '<div style="background:var(--bg);border-radius:10px;padding:10px;text-align:center"><div style="font-family:Playfair Display,serif;font-size:18px;color:var(--g)">'+(totalAns||0)+'</div><div style="font-size:10px;color:var(--mt)">Answered</div></div>'+
           '<div style="background:var(--bg);border-radius:10px;padding:10px;text-align:center"><div style="font-family:Playfair Display,serif;font-size:18px;color:#15803d">'+(totalCor||0)+'</div><div style="font-size:10px;color:var(--mt)">Correct</div></div>'+
@@ -4669,9 +4687,9 @@ function updateAdminSt() {
         '<div style="margin-top:8px;font-size:12px;color:var(--mt)">Joined: '+a.joined+'</div>'+
         (a.isPro && a.proCode ? '<div style="margin-top:6px;font-size:12px;color:var(--g)">🔑 Code: <strong>'+a.proCode+'</strong></div>' : '')+
         '<div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">'+
-          '<button onclick="openDmModal(''+a.id+'')" style="padding:5px 14px;border-radius:8px;border:1.5px solid var(--g);color:var(--g);background:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:DM Sans">💬 Message</button>'+
-          '<button onclick="revokeProAccess(''+a.id+'')" style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--red);color:var(--red);background:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:DM Sans;display:'+(a.isPro?'block':'none')+'">Revoke Pro</button>'+
-          '<button onclick="grantProAccessUI(''+a.id+'')" style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--g);color:var(--g);background:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:DM Sans;display:'+(a.isPro?'none':'block')+'">Grant Pro</button>'+
+          '<button onclick="openDmModal(&quot;'+sid+'&quot;)" style="padding:5px 14px;border-radius:8px;border:1.5px solid var(--g);color:var(--g);background:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:DM Sans">💬 Message</button>'+
+          '<button onclick="revokeProAccess(&quot;'+sid+'&quot;)" style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--red);color:var(--red);background:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:DM Sans;display:'+(a.isPro?'block':'none')+'">Revoke Pro</button>'+
+          '<button onclick="grantProAccessUI(&quot;'+sid+'&quot;)" style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--g);color:var(--g);background:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:DM Sans;display:'+(a.isPro?'none':'block')+'">Grant Pro</button>'+
         '</div>'+
       '</div>'+
     '</div>';
@@ -6135,6 +6153,17 @@ function renderExamReview() {
 // =========================================================
 // CHAT
 // =========================================================
+function _imgFallback(img) {
+  // When a chat avatar image fails to load, replace with initials div
+  var parent = img.parentElement;
+  if(!parent) return;
+  var sender = parent.nextElementSibling;
+  var init = (sender && sender.querySelector && sender.querySelector('.msender'))
+    ? (sender.querySelector('.msender').textContent || '?').charAt(0).toUpperCase()
+    : '?';
+  parent.outerHTML = '<div class="mav">' + init + '</div>';
+}
+
 function renderMsgs() {
   var el=document.getElementById('msgs'); if(!el) return;
   // Update online count in header
@@ -6152,7 +6181,7 @@ function renderMsgs() {
     var avHtml;
     if(!m.me) {
       if(senderAcc && senderAcc.photo) {
-        avHtml = '<div class="mav-img"><img src="'+senderAcc.photo+'" onerror="this.parentElement.outerHTML='<div class=mav>'+m.init+'<\/div>'"></div>';
+        avHtml = '<div class="mav-img"><img src="'+senderAcc.photo+'" onerror="_imgFallback(this)"></div>';
       } else {
         avHtml = '<div class="mav">'+m.init+'</div>';
       }
@@ -6266,10 +6295,16 @@ function sendDmMsg() {
   if(!_dmTargetId) return;
   if(!_dmLogs[_dmTargetId]) _dmLogs[_dmTargetId] = [];
   var now = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-  _dmLogs[_dmTargetId].push({sender:'Admin',init:'ADM',txt:txt,t:now,me:true});
+  _dmLogs[_dmTargetId].push({sender:'Admin',init:'ADM',txt:txt,t:now,me:false});
   inp.value = '';
-  // Save to Firebase: global/dms/{adminToUserId}
-  _fbSave('dms/admin_to_'+_dmTargetId, {log: _dmLogs[_dmTargetId]});
+  // Save to the STUDENT's Firestore path so their onSnapshot fires
+  // Path: users/{studentUid}/dms/admin_to_{studentUid}
+  if(window._fbSetDoc) {
+    window._fbSetDoc(
+      'users/' + _dmTargetId + '/dms/admin_to_' + _dmTargetId,
+      {log: _dmLogs[_dmTargetId]}
+    ).catch(function(e){ console.warn('Admin DM save error:', e); });
+  }
   renderDmMsgs();
   toast('✅ Message sent privately!');
 }
@@ -6297,7 +6332,7 @@ function openMembersSheet() {
           '<div class="member-name">'+a.name+'</div>'+
           '<div class="member-sub">'+(online?'🟢 Online now':'⚫ '+timeAgo(a.lastActive||''))+'</div>'+
         '</div>'+
-        '<button class="member-dm-btn" onclick="openPeerDm(''+a.id+'');closeMembersSheet()">💬 Chat</button>'+
+        '<button class="member-dm-btn" onclick="openPeerDm(&quot;'+a.id+'&quot;);closeMembersSheet()">💬 Chat</button>'+
       '</div>';
     }).join('');
   }
@@ -6321,10 +6356,18 @@ function openPeerDm(userId) {
   modal.classList.add('open');
   renderPeerDmMsgs();
   setTimeout(function(){ var i=document.getElementById('peer-dm-inp'); if(i) i.focus(); }, 200);
-  // Load from Firebase
+  // Load from Firebase — use the current user's copy of the DM thread
   if(ME) {
-    var key = peerDmKey(ME.id||ME.uid, _peerDmTarget);
-    _fbLoad('dms/peer_'+key, null, function(data){ if(data&&data.log){ _peerDmLogs[_peerDmTarget]=data.log; renderPeerDmMsgs(); } });
+    var myId = ME.id||ME.uid;
+    var key = peerDmKey(myId, _peerDmTarget);
+    var docName = 'peer_' + key;
+    if(window._fbGetDoc) {
+      window._fbGetDoc('users/' + myId + '/dms/' + docName).then(function(data){
+        if(data && data.log) { _peerDmLogs[_peerDmTarget] = data.log; renderPeerDmMsgs(); }
+      }).catch(function(){});
+    } else {
+      _fbLoad('dms/peer_'+key, null, function(data){ if(data&&data.log){ _peerDmLogs[_peerDmTarget]=data.log; renderPeerDmMsgs(); } });
+    }
   }
 }
 
@@ -6356,6 +6399,37 @@ function renderPeerDmMsgs() {
   el.scrollTop = el.scrollHeight;
 }
 
+// Student-side: view messages received from admin
+window.openAdminDmView = function() {
+  var myId = window.ME ? (window.ME.id||window.ME.uid) : null;
+  if(!myId) return;
+  // Re-use the dm-modal but swap it to show admin messages
+  var modal = document.getElementById('dm-modal');
+  var avEl = document.getElementById('dm-target-av');
+  document.getElementById('dm-target-name').textContent = 'Admin';
+  document.getElementById('dm-target-status').textContent = '📢 Messages from Admin';
+  avEl.textContent = 'ADM';
+  avEl.style.background = 'var(--gold)';
+  avEl.style.color = 'var(--gd)';
+  _dmTargetId = 'ADMIN_RECEIVED';
+  // Load received messages from Firebase
+  _fbLoad('dms/admin_to_' + myId, null, function(data) {
+    if(data && data.log) {
+      _dmLogs['ADMIN_RECEIVED'] = data.log.map(function(m){ return Object.assign({}, m, {me: false}); });
+    } else {
+      _dmLogs['ADMIN_RECEIVED'] = [];
+    }
+    renderDmMsgs();
+  });
+  // Hide the send bar (read-only for student side of admin DM)
+  var bar = document.querySelector('#dm-modal .dm-bar');
+  if(bar) bar.style.display = 'none';
+  modal.classList.add('open');
+  modal.addEventListener('click', function restoreBar(e) {
+    if(e.target === modal) { if(bar) bar.style.display = ''; modal.removeEventListener('click', restoreBar); }
+  }, {once: false});
+};
+
 function sendPeerDmMsg() {
   var inp = document.getElementById('peer-dm-inp'); if(!inp) return;
   var txt = inp.value.trim(); if(!txt) return;
@@ -6363,10 +6437,23 @@ function sendPeerDmMsg() {
   if(!_peerDmLogs[_peerDmTarget]) _peerDmLogs[_peerDmTarget] = [];
   var now = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
   var myId = ME.id||ME.uid;
-  _peerDmLogs[_peerDmTarget].push({senderId:myId,sender:ME.name||'Me',init:initials(ME.name||'Me'),txt:txt,t:now,me:true});
+  var msg = {senderId:myId, sender:ME.name||'Me', init:initials(ME.name||'Me'), txt:txt, t:now};
+  _peerDmLogs[_peerDmTarget].push(msg);
   inp.value = '';
   var key = peerDmKey(myId, _peerDmTarget);
-  _fbSave('dms/peer_'+key, {log: _peerDmLogs[_peerDmTarget]});
+  // Write to BOTH users paths so both listeners fire
+  if(window._fbSetDoc) {
+    var payload = {log: _peerDmLogs[_peerDmTarget]};
+    var docName = 'peer_' + key;
+    // Sender's path
+    window._fbSetDoc('users/' + myId + '/dms/' + docName, payload)
+      .catch(function(e){ console.warn('Peer DM save (self) error:', e); });
+    // Recipient's path
+    window._fbSetDoc('users/' + _peerDmTarget + '/dms/' + docName, payload)
+      .catch(function(e){ console.warn('Peer DM save (recipient) error:', e); });
+  } else {
+    _fbSave('dms/peer_'+key, {log: _peerDmLogs[_peerDmTarget]});
+  }
   renderPeerDmMsgs();
 }
 
@@ -9614,7 +9701,7 @@ go('splash');
            signOut, onAuthStateChanged, updateProfile, sendPasswordResetEmail,
            updatePassword, reauthenticateWithCredential, EmailAuthProvider }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-  import { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, where }
+  import { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, where, onSnapshot }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -9688,6 +9775,11 @@ go('splash');
     var ref = pathRef(path);
     var snap = await getDoc(ref);
     return snap.exists() ? snap.data() : null;
+  };
+
+  // Expose a collection reference builder for real-time listeners (non-module code)
+  window._fbGetColRef = function(uid) {
+    return collection(db, 'users', uid, 'dms');
   };
 
   // ── Load all user data from Firestore ──
@@ -9828,6 +9920,9 @@ go('splash');
             if(window.renderChat) window.renderChat();
             if(window.updateContinueCard) window.updateContinueCard();
             if(window.updateMockHomeCard) window.updateMockHomeCard();
+            // ── Start real-time DM listeners now that all data is loaded ──
+            window._fbDmsColRef = collection(db, 'users', user.uid, 'dms');
+            window._startDmListeners && window._startDmListeners(user.uid, db, doc, onSnapshot, pathRef);
           });
         } else if(window.ME && (window.ME.uid === user.uid || !window.ME.uid)) {
           // Brand new user — save their profile (just created by doVerify)
@@ -9868,6 +9963,9 @@ go('splash');
           if(window.renderChat) window.renderChat();
           if(window.updateContinueCard) window.updateContinueCard();
           if(window.go) window.go('main');
+          // ── Start real-time DM listeners for new user ──
+          window._fbDmsColRef = collection(db, 'users', user.uid, 'dms');
+          window._startDmListeners && window._startDmListeners(user.uid, db, doc, onSnapshot, pathRef);
         }
       } catch(e) { console.error('Auth state error:', e); }
     }
@@ -10052,6 +10150,215 @@ go('splash');
     <div class="members-list" id="members-list"></div>
   </div>
 </div>
+
+<script>
+// =========================================================
+// REAL-TIME DM NOTIFICATIONS
+// =========================================================
+
+var _dmUnsubscribers = [];
+var _dmLastCounts = {};
+var _dmUnreadCount = 0;
+
+// Called from inside the Firebase module after login
+window._startDmListeners = function(uid, db, docFn, onSnapshotFn, pathRefFn) {
+  // Clean up any previous listeners
+  _dmUnsubscribers.forEach(function(u){ try{ u(); }catch(e){} });
+  _dmUnsubscribers = [];
+  _dmLastCounts = {};
+  _dmUnreadCount = 0;
+  _updateDmBadge();
+
+  // Expose a collection ref helper to non-module code
+  // We capture db+collection here via pathRefFn conventions
+
+  // ── 1. Admin → student private DM listener ──
+  // Path: users/{uid}/dms/admin_to_{uid}
+  try {
+    var adminDmRef = _buildFireRef(db, docFn, 'users/' + uid + '/dms/admin_to_' + uid);
+    if(adminDmRef) {
+      var key1 = 'adm_' + uid;
+      _dmLastCounts[key1] = -1; // -1 = first snapshot pending
+      var unsub1 = onSnapshotFn(adminDmRef, function(snap) {
+        var log = (snap.exists() ? (snap.data().log || []) : []);
+        var prev = _dmLastCounts[key1];
+        if(prev === -1) { _dmLastCounts[key1] = log.length; return; } // baseline, no notification
+        if(log.length > prev) {
+          var myId = window.ME ? String(window.ME.id||window.ME.uid) : null;
+          log.slice(prev).forEach(function(m) {
+            if(m.me || (myId && String(m.senderId) === myId)) return;
+            _handleIncomingDm('adm', 'Admin', null, m.txt || '');
+          });
+          _dmLastCounts[key1] = log.length;
+          // Refresh DM view if open
+          if(window.renderDmMsgs) window.renderDmMsgs();
+        }
+      }, function(e){ console.warn('Admin DM listener:', e.message); });
+      _dmUnsubscribers.push(unsub1);
+    }
+  } catch(e){ console.warn('Admin DM listener setup:', e); }
+
+  // ── 2. Peer DM collection listener ──
+  // Watches users/{uid}/dms/* for any doc changes
+  try {
+    // Build a collection ref: users/{uid}/dms
+    var colRef = _buildFireCol(db, docFn, uid);
+    if(colRef) {
+      var unsub2 = onSnapshotFn(colRef, function(snapshot) {
+        snapshot.docChanges().forEach(function(change) {
+          if(change.type !== 'added' && change.type !== 'modified') return;
+          var docId = change.doc.id;
+          if(docId.indexOf('admin_to_') === 0) return; // handled above
+          var log = (change.doc.data().log || []);
+          var key = 'peer_' + docId;
+          var prev = _dmLastCounts[key];
+          if(prev === undefined) { _dmLastCounts[key] = log.length; return; } // baseline
+          if(log.length > prev) {
+            var myId = window.ME ? String(window.ME.id||window.ME.uid) : null;
+            log.slice(prev).forEach(function(m) {
+              if(myId && String(m.senderId) === myId) return; // own message
+              var sender = (window.accounts||[]).find(function(a){ return String(a.id||a.uid) === String(m.senderId); });
+              var sName = sender ? (sender.name||'Student') : (m.sender||'Student');
+              var sPhoto = sender ? sender.photo : null;
+              _handleIncomingDm('peer_'+docId, sName, sPhoto, m.txt || '');
+              // Update in-memory peer log
+              if(!window._peerDmLogs) window._peerDmLogs = {};
+              var parts = docId.split('_');
+              var peerId = parts.find(function(p){ return p !== myId; });
+              if(peerId) {
+                window._peerDmLogs[peerId] = log;
+                if(window._peerDmTarget === peerId && window.renderPeerDmMsgs) window.renderPeerDmMsgs();
+              }
+            });
+            _dmLastCounts[key] = log.length;
+          }
+        });
+      }, function(e){ console.warn('Peer DM listener:', e.message); });
+      _dmUnsubscribers.push(unsub2);
+    }
+  } catch(e){ console.warn('Peer DM collection listener setup:', e); }
+};
+
+function _buildFireRef(db, docFn, path) {
+  // path like "users/uid/dms/admin_to_uid"
+  try {
+    var p = path.split('/');
+    if(p.length === 4) return docFn(db, p[0], p[1], p[2], p[3]);
+    return null;
+  } catch(e){ return null; }
+}
+function _buildFireCol(db, docFn, uid) {
+  // The Firebase module sets window._fbDmsColRef right before calling _startDmListeners
+  return window._fbDmsColRef || (window._fbGetColRef ? window._fbGetColRef(uid) : null);
+}
+
+// ── Badge management ──
+function _updateDmBadge() {
+  var badge = document.getElementById('chat-unread-badge');
+  if(!badge) return;
+  if(_dmUnreadCount <= 0) {
+    badge.style.display = 'none';
+  } else {
+    badge.style.display = 'flex';
+    badge.textContent = _dmUnreadCount > 99 ? '99+' : String(_dmUnreadCount);
+  }
+}
+
+function _clearDmBadge() {
+  _dmUnreadCount = 0;
+  _updateDmBadge();
+}
+
+// ── Hook switchTab, openDmModal, openPeerDm AFTER all scripts load ──
+// Use window.addEventListener('load') so all functions are defined first.
+window.addEventListener('load', function() {
+  // Patch switchTab
+  var _origST = window.switchTab;
+  if(typeof _origST === 'function') {
+    window.switchTab = function(name, el) {
+      if(name === 'chat') _clearDmBadge();
+      _origST.call(this, name, el);
+    };
+  }
+  // Patch openDmModal
+  var _origDM = window.openDmModal;
+  if(typeof _origDM === 'function') {
+    window.openDmModal = function(uid) {
+      _clearDmBadge();
+      _origDM(uid);
+    };
+  }
+  // Patch openPeerDm
+  var _origPD = window.openPeerDm;
+  if(typeof _origPD === 'function') {
+    window.openPeerDm = function(uid) {
+      _clearDmBadge();
+      _origPD(uid);
+    };
+  }
+});
+
+// ── Handle incoming DM: badge + in-app toast + browser notification ──
+function _handleIncomingDm(key, senderName, senderPhoto, text) {
+  _dmUnreadCount++;
+  _updateDmBadge();
+
+  // Add to the in-app notifications list
+  if(typeof addNotification === 'function') addNotification('chat', senderName + ': ' + text);
+
+  // Show rich in-app toast
+  _showDmToast(key, senderName, senderPhoto, text);
+
+  // Fire browser notification if tab is in background and permission granted
+  if(typeof Notification !== 'undefined' && Notification.permission === 'granted' && document.hidden) {
+    try { new Notification('NursePrep – ' + senderName, { body: text, icon: '/favicon.ico' }); }
+    catch(e){}
+  }
+}
+
+// ── In-app DM toast ──
+var _dmToastTimer = null;
+function _showDmToast(key, name, photo, text) {
+  var old = document.getElementById('dm-notif-toast');
+  if(old) old.remove();
+  if(_dmToastTimer) { clearTimeout(_dmToastTimer); _dmToastTimer = null; }
+
+  var isAdmin = key === 'adm';
+  var avContent = photo
+    ? '<img src="'+photo+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\'">'
+    : (typeof initials === 'function' ? initials(name) : name.charAt(0).toUpperCase());
+
+  var t = document.createElement('div');
+  t.id = 'dm-notif-toast';
+  t.className = 'dm-notif-toast';
+  t.style.borderLeftColor = isAdmin ? 'var(--gold)' : 'var(--g)';
+  var now = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  t.innerHTML =
+    '<div class="dm-notif-av">' + avContent + '</div>' +
+    '<div class="dm-notif-body">' +
+      '<div class="dm-notif-name">' + (isAdmin ? '📢 Admin' : name) + '</div>' +
+      '<div class="dm-notif-msg">' + String(text).replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>' +
+    '</div>' +
+    '<div class="dm-notif-time">' + now + '</div>';
+
+  t.onclick = function() {
+    t.remove();
+    _clearDmBadge();
+    if(isAdmin) {
+      // Open admin DM modal (student side — show received messages)
+      if(window.openAdminDmView) window.openAdminDmView();
+    } else {
+      var myId = window.ME ? String(window.ME.id||window.ME.uid) : null;
+      var parts = key.replace('peer_','').split('_');
+      var peerId = parts.find(function(p){ return p !== myId; });
+      if(peerId && window.openPeerDm) window.openPeerDm(peerId);
+    }
+  };
+
+  document.body.appendChild(t);
+  _dmToastTimer = setTimeout(function(){ if(t.parentNode) t.remove(); }, 5500);
+}
+</script>
 
 <!-- ========== AGORA CALL MODAL ========== -->
 <div id="call-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.92);flex-direction:column;align-items:center;justify-content:center">
