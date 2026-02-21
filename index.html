@@ -738,6 +738,85 @@ body.dark .report-opt-lbl{color:#e2ede8}
 .active-dot.warn{background:var(--gold);box-shadow:0 0 0 3px rgba(245,166,35,.2)}
 .active-dot.cold{background:var(--mt);box-shadow:none}
 
+/* === ONLINE/OFFLINE BADGE === */
+.online-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700}
+.online-badge.online{background:rgba(34,197,94,.12);color:#15803d;border:1px solid rgba(34,197,94,.3)}
+.online-badge.offline{background:rgba(148,163,184,.12);color:#64748b;border:1px solid rgba(148,163,184,.3)}
+.online-badge .badge-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.online-badge.online .badge-dot{background:#22c55e;animation:pulse-ok 2s infinite}
+.online-badge.offline .badge-dot{background:#94a3b8}
+
+/* === STUDENT STATUS FILTER TABS === */
+.stu-filter-tabs{display:flex;gap:6px;margin-bottom:12px}
+.stu-filter-tab{flex:1;padding:8px 4px;border-radius:10px;border:1.5px solid var(--bd);background:#fff;cursor:pointer;font-family:'DM Sans';font-size:12px;font-weight:600;color:var(--mt);text-align:center;transition:all .2s}
+.stu-filter-tab.on{background:var(--g);border-color:var(--g);color:#fff}
+body.dark .stu-filter-tab{background:#1a2920;border-color:#2a3d30;color:#6a9276}
+body.dark .stu-filter-tab.on{background:var(--g);color:#fff}
+
+/* === PRIVATE MESSAGE MODAL === */
+#dm-modal{display:none;position:fixed;inset:0;z-index:8000;background:rgba(0,0,0,.6);align-items:flex-end;justify-content:center}
+#dm-modal.open{display:flex}
+.dm-sheet{background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:430px;padding:0;overflow:hidden;animation:slideUp .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;max-height:85vh}
+@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+.dm-hdr{background:linear-gradient(135deg,var(--g),var(--gd));padding:14px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.dm-hdr-av{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff;overflow:hidden;flex-shrink:0}
+.dm-hdr-av img{width:100%;height:100%;object-fit:cover}
+.dm-hdr-name{font-weight:700;font-size:15px;color:#fff}
+.dm-hdr-status{font-size:11px;color:rgba(255,255,255,.7)}
+.dm-close{margin-left:auto;background:rgba(255,255,255,.15);border:none;border-radius:50%;width:32px;height:32px;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.dm-msgs{flex:1;overflow-y:auto;padding:14px 14px;display:flex;flex-direction:column;gap:10px;min-height:200px}
+.dm-msg{display:flex;align-items:flex-end;gap:8px}
+.dm-msg.me{flex-direction:row-reverse}
+.dm-bub{padding:10px 13px;border-radius:14px;font-size:14px;line-height:1.5;max-width:80%}
+.dm-msg:not(.me) .dm-bub{background:var(--bg);border-radius:0 14px 14px 14px}
+.dm-msg.me .dm-bub{background:var(--g);color:#fff;border-radius:14px 0 14px 14px}
+.dm-time{font-size:10px;color:var(--mt);margin:0 4px 2px;flex-shrink:0}
+.dm-bar{padding:10px 14px;border-top:1px solid var(--bd);display:flex;gap:8px;align-items:center;flex-shrink:0;background:#fff}
+.dm-inp{flex:1;padding:10px 14px;border:1.5px solid var(--bd);border-radius:22px;font-family:'DM Sans';font-size:14px;resize:none;max-height:100px;outline:none;transition:border-color .2s}
+.dm-inp:focus{border-color:var(--g)}
+.dm-send{width:40px;height:40px;border-radius:50%;background:var(--g);border:none;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .2s}
+.dm-send:hover{background:var(--gl)}
+body.dark .dm-sheet{background:#0f1a14}
+body.dark .dm-bar{background:#0f1a14;border-color:#1e2d22}
+body.dark .dm-inp{background:#1a2920;border-color:#2a3d30;color:#e2ede8}
+body.dark .dm-msg:not(.me) .dm-bub{background:#1a2920;color:#e2ede8}
+
+/* === STUDENT SELFIE IN CHAT === */
+.mav-img{width:32px;height:32px;border-radius:50%;overflow:hidden;flex-shrink:0}
+.mav-img img{width:100%;height:100%;object-fit:cover}
+
+/* === STUDENTS PRIVATE CHAT MODAL (student↔student) === */
+#peer-dm-modal{display:none;position:fixed;inset:0;z-index:7900;background:rgba(0,0,0,.6);align-items:flex-end;justify-content:center}
+#peer-dm-modal.open{display:flex}
+
+/* === MEMBERS LIST IN CHAT === */
+.chat-members-btn{background:rgba(255,255,255,.15);border:none;border-radius:8px;padding:5px 10px;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans'}
+.members-sheet{display:none;position:fixed;inset:0;z-index:7800;background:rgba(0,0,0,.5);align-items:flex-end;justify-content:center}
+.members-sheet.open{display:flex}
+.members-inner{background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:430px;padding:0;overflow:hidden;animation:slideUp .3s cubic-bezier(.4,0,.2,1);max-height:70vh;display:flex;flex-direction:column}
+.members-hdr{padding:14px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.members-hdr-title{font-weight:700;font-size:15px}
+.members-list{overflow-y:auto;flex:1}
+.member-row{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--bg);cursor:pointer;transition:background .15s}
+.member-row:hover{background:var(--bg)}
+.member-row:last-child{border-bottom:none}
+.member-av{width:38px;height:38px;border-radius:50%;background:var(--g);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;overflow:hidden;position:relative}
+.member-av img{width:100%;height:100%;object-fit:cover}
+.member-online-ring{position:absolute;bottom:0;right:0;width:11px;height:11px;border-radius:50%;border:2px solid #fff;background:#22c55e}
+.member-online-ring.offline{background:#94a3b8}
+.member-name{font-weight:600;font-size:14px}
+.member-sub{font-size:11px;color:var(--mt)}
+.member-dm-btn{margin-left:auto;padding:5px 12px;border-radius:8px;border:1.5px solid var(--g);color:var(--g);background:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans';transition:all .2s}
+.member-dm-btn:hover{background:rgba(10,110,78,.06)}
+body.dark .members-inner{background:#0f1a14}
+body.dark .members-hdr{border-color:#1e2d22}
+body.dark .members-hdr-title{color:#c8e6d4}
+body.dark .member-row{border-color:#1e2d22}
+body.dark .member-row:hover{background:#1a2920}
+body.dark .member-name{color:#e2ede8}
+body.dark .member-online-ring{border-color:#0f1a14}
+body.dark .member-dm-btn{background:#1a2920;border-color:#2a3d30;color:#4ade80}
+
 /* CSV enhanced */
 .csv-template-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:11px 16px;border-radius:10px;border:1.5px dashed var(--g);background:var(--bg);color:var(--g);font-weight:600;font-size:13px;cursor:pointer;transition:all .2s}
 .csv-template-btn:hover{background:rgba(10,110,78,.08)}
@@ -1923,8 +2002,9 @@ function loadDarkMode() {
     <div class="chat-wrap">
       <div class="chat-hdr">
         <div class="chav">NC</div>
-        <div><div class="ch-title">NMCN Exam Prep 2025 🇳🇬</div><div class="ch-sub">🟢 247 students online</div></div>
+        <div style="flex:1"><div class="ch-title">NMCN Exam Prep 2025 🇳🇬</div><div class="ch-sub" id="chat-online-count">🟢 247 students online</div></div>
         <div class="cbtns">
+          <button class="chat-members-btn" onclick="openMembersSheet()">👥 Members</button>
           <button class="cbtn" onclick="startCall('voice')">🎙️</button>
           <button class="cbtn" onclick="startCall('video')">📹</button>
         </div>
@@ -2972,6 +3052,12 @@ service cloud.firestore {
     <div id="admtab-students" style="display:none">
       <div class="adcard">
         <div class="adtitle">👥 Registered Students <span id="adm-student-count" style="font-size:12px;color:var(--mt);font-weight:400"></span></div>
+        <div class="stu-filter-tabs">
+          <button class="stu-filter-tab on" onclick="setStudentFilter(this,'all')">All</button>
+          <button class="stu-filter-tab" onclick="setStudentFilter(this,'online')">🟢 Online</button>
+          <button class="stu-filter-tab" onclick="setStudentFilter(this,'offline')">⚫ Offline</button>
+          <button class="stu-filter-tab" onclick="setStudentFilter(this,'pro')">⭐ Pro</button>
+        </div>
         <div class="fg" style="margin-bottom:12px">
           <input type="text" id="student-search" placeholder="🔍 Search by name, username..." oninput="updateAdminSt()" style="font-size:13px">
         </div>
@@ -4502,6 +4588,21 @@ function addQ() {
 // =========================================================
 // ADMIN — STUDENTS LIST WITH PERFORMANCE TRACKING
 // =========================================================
+var _stuFilter = 'all';
+
+function setStudentFilter(btn, filter) {
+  _stuFilter = filter;
+  document.querySelectorAll('.stu-filter-tab').forEach(function(b){ b.classList.remove('on'); });
+  btn.classList.add('on');
+  updateAdminSt();
+}
+
+function isOnline(a) {
+  if(!a.lastActive) return false;
+  var diff = Date.now() - new Date(a.lastActive).getTime();
+  return diff < 10 * 60 * 1000; // online = active within 10 minutes
+}
+
 function updateAdminSt() {
   var el=document.getElementById('stlist'); if(!el) return;
   var searchEl = document.getElementById('student-search');
@@ -4509,11 +4610,18 @@ function updateAdminSt() {
   var countEl = document.getElementById('adm-student-count');
   
   var filtered = accounts.filter(function(a){
-    if(!query) return true;
-    return (a.name||'').toLowerCase().includes(query) || (a.username||'').toLowerCase().includes(query) || (a.email||'').toLowerCase().includes(query);
+    if(a.isAdmin) return false;
+    var matchQ = !query || (a.name||'').toLowerCase().includes(query) || (a.username||'').toLowerCase().includes(query) || (a.email||'').toLowerCase().includes(query);
+    if(!matchQ) return false;
+    if(_stuFilter === 'online') return isOnline(a);
+    if(_stuFilter === 'offline') return !isOnline(a);
+    if(_stuFilter === 'pro') return a.isPro;
+    return true;
   });
   
-  if(countEl) countEl.textContent = '(' + filtered.length + ' of ' + accounts.length + ' students)';
+  var totalShown = accounts.filter(function(a){ return !a.isAdmin; }).length;
+  var onlineCount = accounts.filter(function(a){ return !a.isAdmin && isOnline(a); }).length;
+  if(countEl) countEl.innerHTML = '(' + filtered.length + ' of ' + totalShown + ') &nbsp;<span style="color:#22c55e;font-weight:700">● ' + onlineCount + ' online</span>';
   
   if(filtered.length === 0){
     el.innerHTML = query ? '<p style="color:var(--mt);font-size:14px;text-align:center;padding:20px">No students match your search.</p>' :
@@ -4525,26 +4633,28 @@ function updateAdminSt() {
     var av=a.photo?('<img src="'+a.photo+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'):initials(a.name);
     var proBadge=a.isPro?'background:rgba(34,197,94,.1);color:#15803d':'background:rgba(245,166,35,.15);color:var(--goldd)';
     var proLabel=a.isPro?'Pro':'Free';
+    var online = isOnline(a);
+    var statusBadge = '<span class="online-badge '+(online?'online':'offline')+'"><span class="badge-dot"></span>'+(online?'Online':'Offline')+'</span>';
+    var lastSeen = a.lastActive ? (online ? 'Active now' : 'Last seen ' + timeAgo(a.lastActive)) : 'Never active';
     
-    // Get this student's quiz performance from quizHistory (all users share local storage in demo)
-    // In production, quizHistory would be per-user
     var totalAns = a.totalAns||0;
     var totalCor = a.totalCor||0;
     var avgScore = totalAns>0?Math.round(totalCor/totalAns*100)+'%':'—';
     
     return '<div class="user-perf-card">'+
-      '<div class="user-perf-hd" onclick="toggleStudentPerf(\'sp-'+a.id+'\')">'+
-        '<div class="sav-av">'+av+'</div>'+
+      '<div class="user-perf-hd" onclick="toggleStudentPerf('sp-'+a.id+'')">'+
+        '<div class="sav-av" style="position:relative">'+av+
+          '<span style="position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;border:2px solid #fff;background:'+(online?'#22c55e':'#94a3b8')+'"></span>'+
+        '</div>'+
         '<div style="flex:1">'+
           '<div style="font-weight:600;font-size:14px">'+a.name+'</div>'+
-          '<div style="font-size:12px;color:var(--mt)">@'+(a.username||'—')+' · '+a.yearLevel+'</div>'+
+          '<div style="font-size:11px;color:var(--mt)">@'+(a.username||'—')+' · '+lastSeen+'</div>'+
         '</div>'+
-        '<div style="text-align:right;margin-right:8px">'+
-          '<div style="font-size:13px;font-weight:700;color:var(--g)">'+avgScore+'</div>'+
-          '<div style="font-size:10px;color:var(--mt)">avg score</div>'+
+        '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;margin-right:6px">'+
+          statusBadge+
+          '<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;'+proBadge+'">'+proLabel+'</span>'+
         '</div>'+
-        '<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;'+proBadge+'">'+proLabel+'</span>'+
-        '<span style="color:var(--mt);margin-left:6px">›</span>'+
+        '<span style="color:var(--mt)">›</span>'+
       '</div>'+
       '<div id="sp-'+a.id+'" class="user-perf-body">'+
         '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">'+
@@ -4558,13 +4668,24 @@ function updateAdminSt() {
         '</div>'+
         '<div style="margin-top:8px;font-size:12px;color:var(--mt)">Joined: '+a.joined+'</div>'+
         (a.isPro && a.proCode ? '<div style="margin-top:6px;font-size:12px;color:var(--g)">🔑 Code: <strong>'+a.proCode+'</strong></div>' : '')+
-        '<div style="display:flex;gap:6px;margin-top:12px">'+
-          '<button onclick="revokeProAccess(\''+a.id+'\')" style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--red);color:var(--red);background:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:DM Sans;display:'+(a.isPro?'block':'none')+'">Revoke Pro</button>'+
-          '<button onclick="grantProAccessUI(\''+a.id+'\')" style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--g);color:var(--g);background:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:DM Sans;display:'+(a.isPro?'none':'block')+'">Grant Pro</button>'+
+        '<div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">'+
+          '<button onclick="openDmModal(''+a.id+'')" style="padding:5px 14px;border-radius:8px;border:1.5px solid var(--g);color:var(--g);background:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:DM Sans">💬 Message</button>'+
+          '<button onclick="revokeProAccess(''+a.id+'')" style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--red);color:var(--red);background:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:DM Sans;display:'+(a.isPro?'block':'none')+'">Revoke Pro</button>'+
+          '<button onclick="grantProAccessUI(''+a.id+'')" style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--g);color:var(--g);background:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:DM Sans;display:'+(a.isPro?'none':'block')+'">Grant Pro</button>'+
         '</div>'+
       '</div>'+
     '</div>';
   }).join('');
+}
+
+function timeAgo(iso) {
+  var diff = Date.now() - new Date(iso).getTime();
+  var m = Math.floor(diff/60000);
+  if(m < 1) return 'just now';
+  if(m < 60) return m + 'm ago';
+  var h = Math.floor(m/60);
+  if(h < 24) return h + 'h ago';
+  return Math.floor(h/24) + 'd ago';
 }
 
 function toggleStudentPerf(id) {
@@ -6016,11 +6137,27 @@ function renderExamReview() {
 // =========================================================
 function renderMsgs() {
   var el=document.getElementById('msgs'); if(!el) return;
+  // Update online count in header
+  var oc = document.getElementById('chat-online-count');
+  if(oc) {
+    var onlineCnt = accounts.filter(function(a){ return !a.isAdmin && isOnline(a); }).length;
+    oc.textContent = '🟢 ' + (onlineCnt || accounts.length) + ' students online';
+  }
   el.innerHTML=chatLog.map(function(m){
     var bubble=m.voice
       ?'<div class="vbub">▶ <div class="wave"><span></span><span></span><span></span><span></span><span></span></div> <span style="font-size:12px;color:var(--mt)">'+m.dur+'</span></div>'
       :m.txt;
-    return '<div class="msg'+(m.me?' me':'')+'">'+(!m.me?'<div class="mav">'+m.init+'</div>':'')+
+    // Try to find the sender's photo
+    var senderAcc = m.senderId ? accounts.find(function(a){ return String(a.id||a.uid)===String(m.senderId); }) : null;
+    var avHtml;
+    if(!m.me) {
+      if(senderAcc && senderAcc.photo) {
+        avHtml = '<div class="mav-img"><img src="'+senderAcc.photo+'" onerror="this.parentElement.outerHTML='<div class=mav>'+m.init+'<\/div>'"></div>';
+      } else {
+        avHtml = '<div class="mav">'+m.init+'</div>';
+      }
+    }
+    return '<div class="msg'+(m.me?' me':'')+'">'+(!m.me?avHtml:'')+
       '<div>'+(!m.me?'<div class="msender">'+m.sender+'</div>':'')+
       '<div class="mbub">'+bubble+'</div><div class="mtime">'+m.t+'</div></div></div>';
   }).join('');
@@ -6031,7 +6168,8 @@ function sendMsg() {
   var inp=document.getElementById('chat-inp'); if(!inp) return;
   var txt=inp.value.trim(); if(!txt) return;
   var now=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-  chatLog.push({sender:'You',init:ME?initials(ME.name):'ME',txt:txt,t:now,me:true});
+  var myId = ME ? (ME.id||ME.uid) : null;
+  chatLog.push({sender: ME ? (ME.name||'You') : 'You', senderId: myId, init:ME?initials(ME.name):'ME',txt:txt,t:now,me:true});
   inp.value=''; 
   saveChat();
   renderMsgs();
@@ -6079,6 +6217,160 @@ function loadChat() {
   chatLog = defaultMsgs.slice();
   _fbLoad('chat/log', null, function(data){ if(data && data.log && data.log.length) { chatLog=data.log; renderChat && renderChat(); } });
 }
+// =========================================================
+// ADMIN → STUDENT PRIVATE DM
+// =========================================================
+var _dmLogs = {}; // { userId: [{sender,txt,t,me}] }
+var _dmTargetId = null;
+
+function openDmModal(userId) {
+  var a = accounts.find(function(x){ return String(x.id)===String(userId); });
+  if(!a) { toast('Student not found'); return; }
+  _dmTargetId = String(userId);
+  var modal = document.getElementById('dm-modal');
+  var avEl = document.getElementById('dm-target-av');
+  document.getElementById('dm-target-name').textContent = a.name || 'Student';
+  document.getElementById('dm-target-status').textContent = isOnline(a) ? '🟢 Online now' : '⚫ Offline · ' + timeAgo(a.lastActive||'');
+  if(a.photo) { avEl.innerHTML = '<img src="'+a.photo+'" style="width:100%;height:100%;object-fit:cover">'; }
+  else { avEl.textContent = initials(a.name); }
+  modal.classList.add('open');
+  renderDmMsgs();
+  setTimeout(function(){ document.getElementById('dm-inp').focus(); }, 200);
+}
+
+function closeDmModal() {
+  document.getElementById('dm-modal').classList.remove('open');
+  _dmTargetId = null;
+}
+
+function renderDmMsgs() {
+  var el = document.getElementById('dm-msgs'); if(!el) return;
+  var log = _dmLogs[_dmTargetId] || [];
+  if(log.length === 0) {
+    el.innerHTML = '<div style="text-align:center;color:var(--mt);font-size:13px;padding:20px 0">No messages yet.<br>Start the conversation!</div>';
+  } else {
+    el.innerHTML = log.map(function(m){
+      return '<div class="dm-msg'+(m.me?' me':'')+'">'+
+        (!m.me ? '<div class="mav" style="font-size:11px;width:28px;height:28px;min-width:28px">'+m.init+'</div>' : '')+
+        '<div><div class="dm-bub">'+m.txt+'</div></div>'+
+        '<div class="dm-time">'+m.t+'</div>'+
+      '</div>';
+    }).join('');
+  }
+  el.scrollTop = el.scrollHeight;
+}
+
+function sendDmMsg() {
+  var inp = document.getElementById('dm-inp'); if(!inp) return;
+  var txt = inp.value.trim(); if(!txt) return;
+  if(!_dmTargetId) return;
+  if(!_dmLogs[_dmTargetId]) _dmLogs[_dmTargetId] = [];
+  var now = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  _dmLogs[_dmTargetId].push({sender:'Admin',init:'ADM',txt:txt,t:now,me:true});
+  inp.value = '';
+  // Save to Firebase: global/dms/{adminToUserId}
+  _fbSave('dms/admin_to_'+_dmTargetId, {log: _dmLogs[_dmTargetId]});
+  renderDmMsgs();
+  toast('✅ Message sent privately!');
+}
+
+// =========================================================
+// MEMBERS SHEET + STUDENT↔STUDENT PRIVATE CHAT
+// =========================================================
+var _peerDmTarget = null;
+var _peerDmLogs = {};
+
+function openMembersSheet() {
+  var sheet = document.getElementById('members-sheet');
+  var list = document.getElementById('members-list'); if(!list) return;
+  var myId = ME ? (ME.id||ME.uid) : null;
+  var members = accounts.filter(function(a){ return !a.isAdmin && String(a.id||a.uid) !== String(myId); });
+  if(members.length === 0) {
+    list.innerHTML = '<div style="text-align:center;color:var(--mt);font-size:14px;padding:24px">No other members yet.</div>';
+  } else {
+    list.innerHTML = members.map(function(a) {
+      var online = isOnline(a);
+      var av = a.photo ? '<img src="'+a.photo+'" style="width:100%;height:100%;object-fit:cover">' : initials(a.name);
+      return '<div class="member-row">'+
+        '<div class="member-av">'+av+'<span class="member-online-ring'+(online?'':' offline')+'"></span></div>'+
+        '<div style="flex:1">'+
+          '<div class="member-name">'+a.name+'</div>'+
+          '<div class="member-sub">'+(online?'🟢 Online now':'⚫ '+timeAgo(a.lastActive||''))+'</div>'+
+        '</div>'+
+        '<button class="member-dm-btn" onclick="openPeerDm(''+a.id+'');closeMembersSheet()">💬 Chat</button>'+
+      '</div>';
+    }).join('');
+  }
+  sheet.classList.add('open');
+}
+
+function closeMembersSheet() {
+  document.getElementById('members-sheet').classList.remove('open');
+}
+
+function openPeerDm(userId) {
+  var a = accounts.find(function(x){ return String(x.id||x.uid)===String(userId); });
+  if(!a) { toast('User not found'); return; }
+  _peerDmTarget = String(userId);
+  var modal = document.getElementById('peer-dm-modal');
+  var avEl = document.getElementById('peer-dm-av');
+  document.getElementById('peer-dm-name').textContent = a.name || 'Student';
+  document.getElementById('peer-dm-status').textContent = isOnline(a) ? '🟢 Online now' : '⚫ Offline';
+  if(a.photo) { avEl.innerHTML = '<img src="'+a.photo+'" style="width:100%;height:100%;object-fit:cover">'; }
+  else { avEl.textContent = initials(a.name); }
+  modal.classList.add('open');
+  renderPeerDmMsgs();
+  setTimeout(function(){ var i=document.getElementById('peer-dm-inp'); if(i) i.focus(); }, 200);
+  // Load from Firebase
+  if(ME) {
+    var key = peerDmKey(ME.id||ME.uid, _peerDmTarget);
+    _fbLoad('dms/peer_'+key, null, function(data){ if(data&&data.log){ _peerDmLogs[_peerDmTarget]=data.log; renderPeerDmMsgs(); } });
+  }
+}
+
+function closePeerDm() {
+  document.getElementById('peer-dm-modal').classList.remove('open');
+  _peerDmTarget = null;
+}
+
+function peerDmKey(a, b) {
+  return [String(a), String(b)].sort().join('_');
+}
+
+function renderPeerDmMsgs() {
+  var el = document.getElementById('peer-dm-msgs'); if(!el) return;
+  var log = _peerDmLogs[_peerDmTarget] || [];
+  var myId = ME ? (ME.id||ME.uid) : null;
+  if(log.length === 0) {
+    el.innerHTML = '<div style="text-align:center;color:var(--mt);font-size:13px;padding:20px 0">No messages yet. Say hi! 👋</div>';
+  } else {
+    el.innerHTML = log.map(function(m){
+      var isMe = String(m.senderId) === String(myId);
+      return '<div class="dm-msg'+(isMe?' me':'')+'">'+
+        (!isMe ? '<div class="mav" style="font-size:11px;width:28px;height:28px;min-width:28px">'+m.init+'</div>' : '')+
+        '<div><div class="dm-bub">'+m.txt+'</div></div>'+
+        '<div class="dm-time">'+m.t+'</div>'+
+      '</div>';
+    }).join('');
+  }
+  el.scrollTop = el.scrollHeight;
+}
+
+function sendPeerDmMsg() {
+  var inp = document.getElementById('peer-dm-inp'); if(!inp) return;
+  var txt = inp.value.trim(); if(!txt) return;
+  if(!_peerDmTarget || !ME) return;
+  if(!_peerDmLogs[_peerDmTarget]) _peerDmLogs[_peerDmTarget] = [];
+  var now = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  var myId = ME.id||ME.uid;
+  _peerDmLogs[_peerDmTarget].push({senderId:myId,sender:ME.name||'Me',init:initials(ME.name||'Me'),txt:txt,t:now,me:true});
+  inp.value = '';
+  var key = peerDmKey(myId, _peerDmTarget);
+  _fbSave('dms/peer_'+key, {log: _peerDmLogs[_peerDmTarget]});
+  renderPeerDmMsgs();
+}
+
+
 
 // =========================================================
 // MOCK EXAM — ADMIN
@@ -9710,6 +10002,56 @@ go('splash');
     if(window.updateMockHomeCard) window.updateMockHomeCard();
   })();
 </script>
+
+
+<!-- ========== ADMIN → STUDENT PRIVATE MESSAGE MODAL ========== -->
+<div id="dm-modal" onclick="if(event.target===this)closeDmModal()">
+  <div class="dm-sheet">
+    <div class="dm-hdr">
+      <div class="dm-hdr-av" id="dm-target-av">?</div>
+      <div>
+        <div class="dm-hdr-name" id="dm-target-name">Student</div>
+        <div class="dm-hdr-status" id="dm-target-status">Private Message</div>
+      </div>
+      <button class="dm-close" onclick="closeDmModal()">×</button>
+    </div>
+    <div class="dm-msgs" id="dm-msgs"></div>
+    <div class="dm-bar">
+      <input class="dm-inp" id="dm-inp" placeholder="Type a private message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendDmMsg()}">
+      <button class="dm-send" onclick="sendDmMsg()">↑</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== STUDENT-TO-STUDENT PRIVATE CHAT MODAL ========== -->
+<div id="peer-dm-modal" onclick="if(event.target===this)closePeerDm()">
+  <div class="dm-sheet">
+    <div class="dm-hdr">
+      <div class="dm-hdr-av" id="peer-dm-av">?</div>
+      <div>
+        <div class="dm-hdr-name" id="peer-dm-name">Student</div>
+        <div class="dm-hdr-status" id="peer-dm-status">Private Chat</div>
+      </div>
+      <button class="dm-close" onclick="closePeerDm()">×</button>
+    </div>
+    <div class="dm-msgs" id="peer-dm-msgs"></div>
+    <div class="dm-bar">
+      <input class="dm-inp" id="peer-dm-inp" placeholder="Send a private message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendPeerDmMsg()}">
+      <button class="dm-send" onclick="sendPeerDmMsg()">↑</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== MEMBERS SHEET ========== -->
+<div class="members-sheet" id="members-sheet" onclick="if(event.target===this)closeMembersSheet()">
+  <div class="members-inner">
+    <div class="members-hdr">
+      <div class="members-hdr-title">👥 Class Members</div>
+      <button style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--mt)" onclick="closeMembersSheet()">×</button>
+    </div>
+    <div class="members-list" id="members-list"></div>
+  </div>
+</div>
 
 <!-- ========== AGORA CALL MODAL ========== -->
 <div id="call-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.92);flex-direction:column;align-items:center;justify-content:center">
