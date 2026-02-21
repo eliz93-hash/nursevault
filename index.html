@@ -2700,9 +2700,9 @@ function loadDarkMode() {
         <div style="background:#111;color:#7fff7f;font-family:monospace;font-size:11px;padding:12px;border-radius:8px;line-height:1.6;overflow-x:auto;white-space:pre">rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Global data (questions, mock banks) readable by all authenticated users
+    // Global data (questions, mock banks) — readable by anyone, writable only when logged in
     match /global/{document=**} {
-      allow read: if request.auth != null;
+      allow read: if true;
       allow write: if request.auth != null;
     }
     // User data only accessible by that user
@@ -3952,10 +3952,12 @@ function generateCodes() {
 var FIRESTORE_RULES = `rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Global data (questions, mock banks) — readable by anyone, writable only when logged in
     match /global/{document=**} {
-      allow read: if request.auth != null;
+      allow read: if true;
       allow write: if request.auth != null;
     }
+    // User data only accessible by that user
     match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
@@ -4009,6 +4011,12 @@ async function forceSyncAllToFirestore() {
   var msg = document.getElementById('sync-status-msg');
   if(!window._fbSetDoc) {
     if(msg) msg.innerHTML = '<span style="color:#e67e22">⚠ Firebase not ready. Wait a moment and try again.</span>';
+    return;
+  }
+  // Must be logged in to write to Firestore
+  if(!window._fbGetUid || !window._fbGetUid()) {
+    if(msg) msg.innerHTML = '<span style="color:#e74c3c">❌ You must be <strong>logged in</strong> to push questions to Firestore. Please sign in first, then try again.</span>';
+    if(btn) { btn.disabled = false; btn.textContent = '☁️ Force Push All Questions to Firestore'; }
     return;
   }
   if(btn) { btn.disabled = true; btn.textContent = '⏳ Syncing…'; }
